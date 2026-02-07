@@ -2,85 +2,33 @@
 
 **A universal tool composition platform with multiple interfaces.**
 
-GBE is a substrate for composing Unix tools and commands through multiple interfaces: traditional shell (text), AI (natural language), GUI (drag-n-drop), visual programming (flow diagrams), and iconic (visual metaphors).
+GBE is a substrate for composing Unix tools and commands through multiple interfaces: traditional shell (text), AI (natural language), GUI (drag-n-drop), and visual programming (flow diagrams).
 
 > *GBE Builds Everything* - A recursive acronym in the spirit of GNU (GNU's Not Unix)
 
 ## Project Vision
 
-**From:** Text editor → **To:** Universal tool composition platform
-
 Traditional shells (bash/zsh) provide one way to compose tools: text commands. GBE provides multiple interfaces to the same powerful substrate, democratizing tool composition for everyone from developers to non-technical users.
 
-See [Vision Document](notes/VISION_FULL_MULTIPLE_INTERFACES.md) for complete vision.
-
-## Project Status
-
-**Current Phase:** Phase 2 - Client-Server Split (Complete) → Phase 5 Planning
-
-- ✅ Phase 1: Terminal UI Editor (Complete)
-- ✅ Phase 2: Client-Server Split (Complete)
-- 📋 Phase 3: Terminal Multiplexing (Deferred)
-- 📋 Phase 4: Collaborative Editing (Deferred)
-- 🎯 Phase 5: Core Substrate - Adapter/Router/Protocol (Next)
-- 📋 Phase 6: Tool Composition & Chain Library
-- 📋 Phase 7: AI Interface (Natural Language)
-- 📋 Phase 8: GUI Interface (Drag-n-Drop)
-- 📋 Phase 9: Visual Programming (Flow Editor)
-- 📋 Phase 10: Iconic Interface
+See [Architecture Document](notes/ARCHITECTURE.md) for complete vision and design.
 
 ## Documentation
 
-### 🎯 Vision & Architecture
+### Vision & Architecture
 **Start here to understand GBE:**
-- [Vision: Multiple Interfaces](notes/VISION_FULL_MULTIPLE_INTERFACES.md) - Complete platform vision
-- [Architecture V2: Adapter-Centric](notes/ARCHITECTURE_V2_ADAPTER_CENTRIC.md) - Current design
-- [Architecture V1: Layered](notes/ARCHITECTURE_V1_LAYERED.md) - Historical (archived)
-- [Line Stream Vision](notes/LINE_STREAM_VISION.md) - Overview and evolution
+- [Architecture](notes/ARCHITECTURE.md) - Complete vision and design
+- [Design Evolution](notes/diary/) - Design thinking journal
 
-### 📚 [docs/](docs/)
-User-facing documentation:
-- [Manual Test Guide](docs/MANUAL_TEST_GUIDE.md) - Testing procedures
+### Project Information
+- [STATUS.md](STATUS.md) - Current project status and roadmap
+- [AGENTS.md](AGENTS.md) - Development workflow and conventions
+- [docs/](docs/) - User-facing documentation (to be written)
 
-### 📝 [notes/](notes/)
-Design documents and planning:
-- [Project Plan](notes/PLAN.md) - Overall roadmap
-- [Session Handoffs](notes/SESSION_HANDOFF.md) - Progress tracking
-- [Agent Instructions](notes/AGENTS.md) - Development workflow
-- [Diary](notes/diary/) - Design evolution journal
+## Getting Started
 
-## Quick Start
+GBE is currently in the vision and design phase. Implementation will begin with Phase 5 (core substrate).
 
-### Building
-
-```bash
-cargo build --release --workspace
-```
-
-### Running
-
-**Start the server:**
-```bash
-./target/release/gbe-server [socket-path]
-# Default socket: /tmp/gbe-server.sock
-```
-
-**Start the client:**
-```bash
-./target/release/gbe-client <session-name> [filename]
-```
-
-### Testing
-
-```bash
-# Run all tests
-cargo test --workspace
-
-# Run specific package tests
-cargo test -p gbe-client
-cargo test -p gbe-server
-cargo test -p gbe-common
-```
+See [STATUS.md](STATUS.md) for detailed project status and [ARCHITECTURE.md](notes/ARCHITECTURE.md) for the complete design.
 
 ## Architecture (Phase 5 Target)
 
@@ -98,43 +46,30 @@ Text (CLI)       Traditional bash-like shell
 AI (LLM)         Natural language → tool chains
 GUI (Web)        Drag-n-drop visual composition
 Visual (Flow)    Node-RED style flow programming
-Iconic (Icons)   Visual metaphor composition
 ```
 
 **Project structure:**
 ```
 gbe/
-├── client/         # Terminal UI client (ratatui)
-├── server/         # Router + adapter + buffer
-├── common/         # Protocol definitions
-├── docs/           # User documentation
-└── notes/          # Vision & design docs
+├── notes/          # Vision & architecture docs
+├── docs/           # User documentation (TBD)
+├── AGENTS.md       # Development workflow
+└── STATUS.md       # Current status & roadmap
 ```
 
-## Current Capabilities (Phase 2)
+## Project Status
 
-### Phase 1 (Complete)
-- ✅ Terminal UI with ratatui
-- ✅ Basic text editing
-- ✅ File operations
-- ✅ Rope-based text buffer
+**Current Phase:** Vision & Planning
 
-### Phase 2 (Complete)
-- ✅ Unix socket IPC
-- ✅ Protocol definitions
-- ✅ Session management
-- ✅ Client-server communication
-- ✅ Integration testing
-
-### Phases 3-4 (Deferred)
-Deferred in favor of Phase 5 (universal substrate)
-
-### Phase 5 (Next - Core Substrate)
-- 📋 gbe-router (message broker)
-- 📋 gbe-adapter (universal wrapper)
-- 📋 gbe-buffer (rope + ring)
-- 📋 Protocol for tool composition
-- 📋 Text interface (shell-like)
+- ✅ Vision defined
+- ✅ Architecture designed
+- 🎯 Next: Phase 5 - Build core substrate
+  - gbe-router (message broker)
+  - gbe-adapter (universal wrapper)
+  - gbe-buffer (rope + ring)
+  - gbe-client (terminal UI)
+  - Protocol for tool composition
+  - Text interface (shell-like)
 
 ## Development
 
@@ -150,7 +85,7 @@ bd list --status=open # List all open issues
 
 ### Workflow
 
-See [notes/AGENTS.md](notes/AGENTS.md) for development workflow and conventions.
+See [AGENTS.md](AGENTS.md) for development workflow and conventions.
 
 ## License
 

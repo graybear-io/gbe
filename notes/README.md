@@ -1,58 +1,56 @@
-# GBE Design & Vision Documents
+# gbe design documents
 
-Design documents and architectural notes for GBE (GBE Builds Everything) - a universal tool composition platform with multiple interfaces.
+design and architectural notes for gbe (gbe builds everything).
 
-## Vision & Architecture
+---
 
-**Start here to understand GBE:**
+## architecture
 
-- **[VISION_FULL_MULTIPLE_INTERFACES.md](VISION_FULL_MULTIPLE_INTERFACES.md)** - Complete platform vision
-  - Multiple interfaces: Text (CLI), AI (LLM), GUI, Visual Programming, Iconic
-  - Universal tool composition substrate
-  - Democratizing automation for all users
+**[ARCHITECTURE.md](ARCHITECTURE.md)** - complete vision and design
 
-- **[ARCHITECTURE_V2_ADAPTER_CENTRIC.md](ARCHITECTURE_V2_ADAPTER_CENTRIC.md)** - Current design ⭐
-  - 4 core tools: router, adapter, buffer, client
-  - Adapter wraps ANY Unix command
-  - No coordinators, pure message passing
+covers:
+- vision: multiple interfaces for tool composition
+- core design: adapter pattern, minimal tool set, protocol
+- interfaces: text, ai, gui, visual, iconic
+- implementation roadmap
+- success criteria
 
-- **[LINE_STREAM_VISION.md](LINE_STREAM_VISION.md)** - Overview & evolution
-  - Introduction to line-oriented streams
-  - Links to all architectural versions
+---
 
-- **[ARCHITECTURE_V1_LAYERED.md](ARCHITECTURE_V1_LAYERED.md)** - Archived
-  - Original 8-layer design (superseded by V2)
-  - Kept for historical context
+## design evolution
 
-## Design Evolution
+**[diary/](diary/)** - design thinking journal
 
-**[diary/](diary/)** - Design thinking journal
-- `2026-02-07_vision_breakthrough.md` - How we arrived at multiple interfaces vision
-- Session notes and architectural discoveries
+- `2026-02-07_vision_breakthrough.md` - how we arrived at multiple interfaces vision
+- session notes and architectural discoveries
 
-## Quick Reference
+---
 
-**Core Concept:**
+## quick reference
+
+core concept:
 ```
-Traditional Shell:  Text commands → Tool execution → Text output
-GBE:               Multiple interfaces → Tool chains → Rich rendering
+traditional shell: text commands → tool execution → text output
+gbe:              multiple interfaces → tool chains → rich rendering
 ```
 
-**The Five Interfaces:**
-1. Text (CLI) - bash-like shell
-2. AI (LLM) - natural language
-3. GUI (Web) - drag-n-drop
-4. Visual Programming - Node-RED style flows
-5. Iconic - visual metaphor composition
+five interfaces:
+1. text (cli) - bash-like shell
+2. ai (llm) - natural language
+3. gui (web) - drag-n-drop
+4. visual programming - node-red style flows
+5. iconic - visual metaphor composition
 
-**All interfaces decompose to the same tool composition protocol.**
+all interfaces decompose to the same tool composition protocol.
 
-## Project Status
+---
 
-- ✅ Vision defined
-- ✅ Architecture V2 designed
-- 🎯 Next: Phase 5 - Build core substrate
+## project status
+
+- vision defined
+- architecture designed
+- next: phase 5 - build core substrate
   - gbe-router (message broker)
   - gbe-adapter (universal wrapper)
   - gbe-buffer (storage layer)
-  - gbe-client (terminal UI)
+  - gbe-client (terminal ui)
