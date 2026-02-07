@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bd create:*)",
+      "Bash(cargo doc:*)",
+      "WebSearch",
+      "Bash(cargo test:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo add:*)",
+      "Bash(cargo build:*)"
+    ]
+  }
+}
