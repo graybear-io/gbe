@@ -1,6 +1,8 @@
 # Rust build artifacts
 /target
 Cargo.lock
+**/*.rs.bk
+*.pdb
 
 # IDE
 .vscode/
@@ -11,3 +13,8 @@ Cargo.lock
 
 # OS
 .DS_Store
+Thumbs.db
+
+# GBE runtime
+/tmp/
+*.sock
