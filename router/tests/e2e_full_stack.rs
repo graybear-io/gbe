@@ -27,7 +27,8 @@ impl TestProcess {
         println!("Starting {}...", name);
 
         let mut cmd = Command::new("cargo");
-        cmd.args(&["run", "--package", package, "--quiet"]);
+        cmd.args(&["run", "--package", package]);
+        // Don't use --quiet so we can see logs in CI
 
         if !args.is_empty() {
             cmd.arg("--");
@@ -223,13 +224,14 @@ fn test_full_stack_integration() -> Result<()> {
     let _ = std::fs::remove_file("/tmp/gbe-router.sock");
 
     // Start router
-    let _router = TestProcess::start("router", "gbe-router", &[])?;
+    let router = TestProcess::start("router", "gbe-router", &[])?;
+    println!("Router started (PID: {})", router.child.id());
     wait_for_router()?;
 
     // Start adapter with "seq 1 10"
     let adapter = TestProcess::start("adapter", "gbe-adapter", &["seq", "1", "10"])?;
     thread::sleep(Duration::from_millis(500));
-    println!("✓ Adapter started");
+    println!("✓ Adapter started (PID: {})", adapter.child.id());
 
     // Discover adapter ToolId
     let adapter_id = discover_adapter_id()?;

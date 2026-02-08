@@ -84,8 +84,8 @@ impl TestConnection {
 #[test]
 #[ignore] // Requires router binary
 fn test_connect_and_disconnect() -> Result<()> {
-    let _router = RouterProcess::start()?;
-    let mut conn = _router.connect()?;
+    let router = RouterProcess::start()?;
+    let mut conn = router.connect()?;
 
     // Send Connect
     conn.send(&ControlMessage::Connect {
@@ -113,10 +113,10 @@ fn test_connect_and_disconnect() -> Result<()> {
 #[test]
 #[ignore] // Requires router binary
 fn test_subscribe_to_tool() -> Result<()> {
-    let _router = RouterProcess::start()?;
+    let router = RouterProcess::start()?;
 
     // Tool A connects
-    let mut tool_a = _router.connect()?;
+    let mut tool_a = router.connect()?;
     tool_a.send(&ControlMessage::Connect {
         capabilities: vec![],
     })?;
@@ -127,7 +127,7 @@ fn test_subscribe_to_tool() -> Result<()> {
     };
 
     // Tool B connects
-    let mut tool_b = _router.connect()?;
+    let mut tool_b = router.connect()?;
     tool_b.send(&ControlMessage::Connect {
         capabilities: vec!["raw".to_string()],
     })?;
@@ -156,9 +156,9 @@ fn test_subscribe_to_tool() -> Result<()> {
 #[test]
 #[ignore] // Requires router binary
 fn test_subscribe_to_unknown_tool() -> Result<()> {
-    let _router = RouterProcess::start()?;
+    let router = RouterProcess::start()?;
 
-    let mut conn = _router.connect()?;
+    let mut conn = router.connect()?;
 
     // Connect
     conn.send(&ControlMessage::Connect {
@@ -185,10 +185,10 @@ fn test_subscribe_to_unknown_tool() -> Result<()> {
 #[test]
 #[ignore] // Requires router binary
 fn test_query_capabilities() -> Result<()> {
-    let _router = RouterProcess::start()?;
+    let router = RouterProcess::start()?;
 
     // Tool A connects with capabilities
-    let mut tool_a = _router.connect()?;
+    let mut tool_a = router.connect()?;
     tool_a.send(&ControlMessage::Connect {
         capabilities: vec!["pty".to_string(), "color".to_string()],
     })?;
@@ -199,7 +199,7 @@ fn test_query_capabilities() -> Result<()> {
     };
 
     // Tool B queries A's capabilities
-    let mut tool_b = _router.connect()?;
+    let mut tool_b = router.connect()?;
     tool_b.send(&ControlMessage::Connect {
         capabilities: vec![],
     })?;
