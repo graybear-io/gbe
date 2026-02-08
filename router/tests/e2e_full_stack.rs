@@ -205,7 +205,7 @@ fn test_full_stack_integration() -> Result<()> {
     wait_for_router()?;
 
     // Start adapter with "seq 1 10"
-    let _adapter = TestProcess::start("adapter", "gbe-adapter", &["seq", "1", "10"])?;
+    let adapter = TestProcess::start("adapter", "gbe-adapter", &["seq", "1", "10"])?;
     thread::sleep(Duration::from_millis(500));
     println!("✓ Adapter started");
 
