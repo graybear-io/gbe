@@ -56,7 +56,10 @@ fn main() -> Result<()> {
 
     // Get assigned ToolId and data address
     let (_tool_id, data_addr) = match router_conn.recv()? {
-        ControlMessage::ConnectAck { tool_id, data_listen_address } => {
+        ControlMessage::ConnectAck {
+            tool_id,
+            data_listen_address,
+        } => {
             info!("Assigned ToolId: {}", tool_id);
             info!("Data address: {}", data_listen_address);
             (tool_id, data_listen_address)
@@ -73,8 +76,7 @@ fn main() -> Result<()> {
 
     // Bind data listener
     let _ = std::fs::remove_file(socket_path); // Clean up if exists
-    let data_listener = UnixListener::bind(socket_path)
-        .context("Failed to bind data listener")?;
+    let data_listener = UnixListener::bind(socket_path).context("Failed to bind data listener")?;
 
     info!("Data listener bound at {}", socket_path);
 
@@ -99,9 +101,8 @@ fn main() -> Result<()> {
 
     // Accept data connections in background
     let seq_clone = seq.clone();
-    let data_thread = thread::spawn(move || {
-        handle_data_stream(data_listener, stdout, stderr, seq_clone)
-    });
+    let data_thread =
+        thread::spawn(move || handle_data_stream(data_listener, stdout, stderr, seq_clone));
 
     // Wait for command to exit
     let exit_status = child.wait().context("Failed to wait for child")?;
@@ -130,13 +131,13 @@ fn handle_data_stream(
     seq: Arc<AtomicU64>,
 ) -> Result<()> {
     // Accept first connection (Phase 1: single subscriber)
-    let (stream, _addr) = listener.accept()
+    let (stream, _addr) = listener
+        .accept()
         .context("Failed to accept data connection")?;
 
     info!("Data subscriber connected");
 
-    let data_conn_stdout = stream.try_clone()
-        .context("Failed to clone data stream")?;
+    let data_conn_stdout = stream.try_clone().context("Failed to clone data stream")?;
     let data_conn_stderr = stream;
 
     // Stream stdout
@@ -150,10 +151,7 @@ fn handle_data_stream(
                     let mut data = line.into_bytes();
                     data.push(b'\n');
 
-                    let frame = DataFrame::new(
-                        stdout_seq.fetch_add(1, Ordering::SeqCst),
-                        data,
-                    );
+                    let frame = DataFrame::new(stdout_seq.fetch_add(1, Ordering::SeqCst), data);
 
                     if let Err(e) = frame.write_to(&mut conn) {
                         error!("Failed to write stdout frame: {}", e);
@@ -180,10 +178,7 @@ fn handle_data_stream(
                     let mut data = format!("[stderr] {}", line).into_bytes();
                     data.push(b'\n');
 
-                    let frame = DataFrame::new(
-                        stderr_seq.fetch_add(1, Ordering::SeqCst),
-                        data,
-                    );
+                    let frame = DataFrame::new(stderr_seq.fetch_add(1, Ordering::SeqCst), data);
 
                     if let Err(e) = frame.write_to(&mut conn) {
                         error!("Failed to write stderr frame: {}", e);

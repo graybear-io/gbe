@@ -232,21 +232,23 @@ impl DataFrame {
     /// Deserialize from bytes (for testing/convenience)
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, ProtocolError> {
         if bytes.len() < 12 {
-            return Err(ProtocolError::InvalidFrame(
-                format!("Frame too short: {} bytes", bytes.len())
-            ));
+            return Err(ProtocolError::InvalidFrame(format!(
+                "Frame too short: {} bytes",
+                bytes.len()
+            )));
         }
 
         let len = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as usize;
         let seq = u64::from_be_bytes([
-            bytes[4], bytes[5], bytes[6], bytes[7],
-            bytes[8], bytes[9], bytes[10], bytes[11]
+            bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9], bytes[10], bytes[11],
         ]);
 
         if bytes.len() != 12 + len {
-            return Err(ProtocolError::InvalidFrame(
-                format!("Expected {} bytes, got {}", 12 + len, bytes.len())
-            ));
+            return Err(ProtocolError::InvalidFrame(format!(
+                "Expected {} bytes, got {}",
+                12 + len,
+                bytes.len()
+            )));
         }
 
         let payload = bytes[12..].to_vec();
@@ -289,7 +291,10 @@ mod tests {
         let parsed: ControlMessage = serde_json::from_str(&json).unwrap();
 
         match parsed {
-            ControlMessage::ConnectAck { tool_id, data_listen_address } => {
+            ControlMessage::ConnectAck {
+                tool_id,
+                data_listen_address,
+            } => {
                 assert_eq!(tool_id, "12345-001");
                 assert_eq!(data_listen_address, "unix:///tmp/gbe-12345-001.sock");
             }
@@ -362,8 +367,7 @@ mod tests {
 
         // Check sequence field (u64 big-endian)
         let seq = u64::from_be_bytes([
-            bytes[4], bytes[5], bytes[6], bytes[7],
-            bytes[8], bytes[9], bytes[10], bytes[11]
+            bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9], bytes[10], bytes[11],
         ]);
         assert_eq!(seq, 100);
 

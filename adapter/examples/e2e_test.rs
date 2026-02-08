@@ -15,8 +15,8 @@ fn main() -> Result<()> {
 
     // Connect to router
     println!("1. Connecting to router...");
-    let router_stream = UnixStream::connect("/tmp/gbe-router.sock")
-        .context("Failed to connect to router")?;
+    let router_stream =
+        UnixStream::connect("/tmp/gbe-router.sock").context("Failed to connect to router")?;
 
     let mut router_writer = router_stream.try_clone()?;
     let mut router_reader = BufReader::new(router_stream);
@@ -67,7 +67,10 @@ fn main() -> Result<()> {
     let sub_ack: ControlMessage = serde_json::from_str(line.trim())?;
 
     let data_addr = match sub_ack {
-        ControlMessage::SubscribeAck { data_connect_address, .. } => {
+        ControlMessage::SubscribeAck {
+            data_connect_address,
+            ..
+        } => {
             println!("   ✓ Data address: {}", data_connect_address);
             data_connect_address
         }
@@ -78,12 +81,13 @@ fn main() -> Result<()> {
     };
 
     // Connect to data channel
-    let socket_path = data_addr.strip_prefix("unix://")
+    let socket_path = data_addr
+        .strip_prefix("unix://")
         .context("Invalid data address")?;
 
     println!("\n4. Connecting to data channel: {}...", socket_path);
-    let mut data_stream = UnixStream::connect(socket_path)
-        .context("Failed to connect to data channel")?;
+    let mut data_stream =
+        UnixStream::connect(socket_path).context("Failed to connect to data channel")?;
 
     println!("   ✓ Connected!\n");
 

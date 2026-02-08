@@ -71,13 +71,21 @@ impl RouterState {
     }
 
     /// Register a new connection
-    fn register_connection(&self, tool_id: ToolId, data_address: String, capabilities: Vec<String>) {
+    fn register_connection(
+        &self,
+        tool_id: ToolId,
+        data_address: String,
+        capabilities: Vec<String>,
+    ) {
         let mut conns = self.connections.lock().unwrap();
-        conns.insert(tool_id.clone(), ConnectionInfo {
-            tool_id,
-            data_listen_address: data_address,
-            capabilities,
-        });
+        conns.insert(
+            tool_id.clone(),
+            ConnectionInfo {
+                tool_id,
+                data_listen_address: data_address,
+                capabilities,
+            },
+        );
     }
 
     /// Unregister a connection
@@ -102,9 +110,7 @@ impl RouterState {
     /// Add a subscription: subscriber wants data from source
     fn add_subscription(&self, source: &ToolId, subscriber: ToolId) {
         let mut subs = self.subscriptions.lock().unwrap();
-        subs.entry(source.clone())
-            .or_default()
-            .push(subscriber);
+        subs.entry(source.clone()).or_default().push(subscriber);
     }
 
     /// Get subscriber count for a source
@@ -131,8 +137,7 @@ fn main() -> Result<()> {
     info!("Starting gbe-router v{}", env!("CARGO_PKG_VERSION"));
     info!("Listening on {}", args.socket);
 
-    let listener = UnixListener::bind(&args.socket)
-        .context("Failed to bind Unix socket")?;
+    let listener = UnixListener::bind(&args.socket).context("Failed to bind Unix socket")?;
 
     let state = RouterState::new();
 
@@ -182,8 +187,7 @@ fn handle_connection(stream: UnixStream, state: RouterState) -> Result<()> {
                     }
 
                     ControlMessage::Subscribe { target } => {
-                        let subscriber = tool_id.as_ref()
-                            .context("Subscribe without Connect")?;
+                        let subscriber = tool_id.as_ref().context("Subscribe without Connect")?;
 
                         match state.get_connection(&target) {
                             Some(info) => {
@@ -209,8 +213,7 @@ fn handle_connection(stream: UnixStream, state: RouterState) -> Result<()> {
                     }
 
                     ControlMessage::Unsubscribe { target } => {
-                        let subscriber = tool_id.as_ref()
-                            .context("Unsubscribe without Connect")?;
+                        let subscriber = tool_id.as_ref().context("Unsubscribe without Connect")?;
 
                         info!("Tool {} unsubscribed from {}", subscriber, target);
 
@@ -220,17 +223,13 @@ fn handle_connection(stream: UnixStream, state: RouterState) -> Result<()> {
 
                     ControlMessage::QueryCapabilities { target } => {
                         match state.get_connection(&target) {
-                            Some(info) => {
-                                Some(ControlMessage::CapabilitiesResponse {
-                                    capabilities: info.capabilities,
-                                })
-                            }
-                            None => {
-                                Some(ControlMessage::Error {
-                                    code: "NOT_FOUND".to_string(),
-                                    message: format!("Tool {} not found", target),
-                                })
-                            }
+                            Some(info) => Some(ControlMessage::CapabilitiesResponse {
+                                capabilities: info.capabilities,
+                            }),
+                            None => Some(ControlMessage::Error {
+                                code: "NOT_FOUND".to_string(),
+                                message: format!("Tool {} not found", target),
+                            }),
                         }
                     }
 
@@ -243,11 +242,11 @@ fn handle_connection(stream: UnixStream, state: RouterState) -> Result<()> {
                     }
 
                     // These messages are sent by router, not received
-                    ControlMessage::ConnectAck { .. } |
-                    ControlMessage::SubscribeAck { .. } |
-                    ControlMessage::CapabilitiesResponse { .. } |
-                    ControlMessage::Error { .. } |
-                    ControlMessage::FlowControl { .. } => {
+                    ControlMessage::ConnectAck { .. }
+                    | ControlMessage::SubscribeAck { .. }
+                    | ControlMessage::CapabilitiesResponse { .. }
+                    | ControlMessage::Error { .. }
+                    | ControlMessage::FlowControl { .. } => {
                         warn!("Received unexpected message type: {:?}", msg);
                         None
                     }

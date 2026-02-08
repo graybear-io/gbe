@@ -30,7 +30,10 @@ fn main() -> Result<()> {
     let ack: ControlMessage = serde_json::from_str(line.trim())?;
 
     match ack {
-        ControlMessage::ConnectAck { tool_id, data_listen_address } => {
+        ControlMessage::ConnectAck {
+            tool_id,
+            data_listen_address,
+        } => {
             println!("✓ Received ConnectAck:");
             println!("  Tool ID: {}", tool_id);
             println!("  Data address: {}", data_listen_address);

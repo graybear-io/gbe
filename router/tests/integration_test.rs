@@ -22,7 +22,14 @@ impl RouterProcess {
 
         // Start router in background
         let child = Command::new("cargo")
-            .args(&["run", "--package", "gbe-router", "--", "--socket", socket_path])
+            .args(&[
+                "run",
+                "--package",
+                "gbe-router",
+                "--",
+                "--socket",
+                socket_path,
+            ])
             .spawn()?;
 
         // Wait for router to start
@@ -87,7 +94,10 @@ fn test_connect_and_disconnect() -> Result<()> {
 
     // Receive ConnectAck
     match conn.recv()? {
-        ControlMessage::ConnectAck { tool_id, data_listen_address } => {
+        ControlMessage::ConnectAck {
+            tool_id,
+            data_listen_address,
+        } => {
             assert!(tool_id.contains('-'));
             assert!(data_listen_address.starts_with("unix:///tmp/gbe-"));
         }
@@ -130,7 +140,10 @@ fn test_subscribe_to_tool() -> Result<()> {
     })?;
 
     match tool_b.recv()? {
-        ControlMessage::SubscribeAck { data_connect_address, capabilities } => {
+        ControlMessage::SubscribeAck {
+            data_connect_address,
+            capabilities,
+        } => {
             assert!(data_connect_address.contains(&tool_a_id));
             assert_eq!(capabilities.len(), 0);
         }
@@ -192,9 +205,7 @@ fn test_query_capabilities() -> Result<()> {
     })?;
     let _ = tool_b.recv()?; // Consume ConnectAck
 
-    tool_b.send(&ControlMessage::QueryCapabilities {
-        target: tool_a_id,
-    })?;
+    tool_b.send(&ControlMessage::QueryCapabilities { target: tool_a_id })?;
 
     match tool_b.recv()? {
         ControlMessage::CapabilitiesResponse { capabilities } => {

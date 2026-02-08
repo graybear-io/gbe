@@ -23,7 +23,9 @@ impl Connection {
     /// Receive a control message (JSON, newline-delimited)
     pub fn recv_message(&mut self) -> Result<Option<ControlMessage>> {
         let mut line = String::new();
-        let n = self.reader.read_line(&mut line)
+        let n = self
+            .reader
+            .read_line(&mut line)
             .context("Failed to read from socket")?;
 
         if n == 0 {
@@ -31,22 +33,18 @@ impl Connection {
             return Ok(None);
         }
 
-        let msg = serde_json::from_str(line.trim())
-            .context("Failed to parse control message")?;
+        let msg = serde_json::from_str(line.trim()).context("Failed to parse control message")?;
 
         Ok(Some(msg))
     }
 
     /// Send a control message (JSON, newline-delimited)
     pub fn send_message(&mut self, msg: &ControlMessage) -> Result<()> {
-        let json = serde_json::to_string(msg)
-            .context("Failed to serialize control message")?;
+        let json = serde_json::to_string(msg).context("Failed to serialize control message")?;
 
-        writeln!(self.writer, "{}", json)
-            .context("Failed to write to socket")?;
+        writeln!(self.writer, "{}", json).context("Failed to write to socket")?;
 
-        self.writer.flush()
-            .context("Failed to flush socket")?;
+        self.writer.flush().context("Failed to flush socket")?;
 
         Ok(())
     }

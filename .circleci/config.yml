@@ -1,31 +1,132 @@
-# Use the latest 2.1 version of CircleCI pipeline process engine.
-# See: https://circleci.com/docs/reference/configuration-reference
 version: 2.1
 
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/guides/orchestrate/jobs-steps/#jobs-overview & https://circleci.com/docs/reference/configuration-reference/#jobs
-jobs:
-  say-hello:
-    # Specify the execution environment. You can specify an image from Docker Hub or use one of our convenience images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/guides/execution-managed/executor-intro/ & https://circleci.com/docs/reference/configuration-reference/#executor-job
-    docker:
-      # Specify the version you desire here
-      # See: https://circleci.com/developer/images/image/cimg/base
-      - image: cimg/base:current
-
-    # Add steps to the job
-    # See: https://circleci.com/docs/guides/orchestrate/jobs-steps/#steps-overview & https://circleci.com/docs/reference/configuration-reference/#steps
+# Reusable commands
+commands:
+  install_just:
+    description: "Install just command runner"
     steps:
-      # Checkout the code as the first step.
-      - checkout
       - run:
-          name: "Say hello"
-          command: "echo Hello, World!"
+          name: "Install just"
+          command: |
+            curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+            just --version
 
-# Orchestrate jobs using workflows
-# See: https://circleci.com/docs/guides/orchestrate/workflows/ & https://circleci.com/docs/reference/configuration-reference/#workflows
+  setup_rust_cache:
+    description: "Restore Rust build caches"
+    steps:
+      - restore_cache:
+          keys:
+            - cargo-registry-v1-{{ arch }}-{{ checksum "Cargo.lock" }}
+            - cargo-registry-v1-{{ arch }}-
+      - restore_cache:
+          keys:
+            - cargo-target-v1-{{ arch }}-{{ checksum "Cargo.lock" }}
+            - cargo-target-v1-{{ arch }}-
+
+  save_rust_cache:
+    description: "Save Rust build caches"
+    steps:
+      - save_cache:
+          key: cargo-registry-v1-{{ arch }}-{{ checksum "Cargo.lock" }}
+          paths:
+            - ~/.cargo/registry
+            - ~/.cargo/git
+      - save_cache:
+          key: cargo-target-v1-{{ arch }}-{{ checksum "Cargo.lock" }}
+          paths:
+            - target
+
+jobs:
+  build:
+    docker:
+      - image: cimg/rust:1.85
+    resource_class: medium
+    steps:
+      - checkout
+      - install_just
+      - setup_rust_cache
+      - run:
+          name: "Show Rust version"
+          command: |
+            rustc --version
+            cargo --version
+      - run:
+          name: "Build workspace"
+          command: just build
+      - save_rust_cache
+      - persist_to_workspace:
+          root: .
+          paths:
+            - target
+
+  test:
+    docker:
+      - image: cimg/rust:1.85
+    resource_class: medium
+    steps:
+      - checkout
+      - install_just
+      - setup_rust_cache
+      - attach_workspace:
+          at: .
+      - run:
+          name: "Run all tests"
+          command: just test
+
+  clippy:
+    docker:
+      - image: cimg/rust:1.85
+    resource_class: medium
+    steps:
+      - checkout
+      - install_just
+      - setup_rust_cache
+      - attach_workspace:
+          at: .
+      - run:
+          name: "Run clippy"
+          command: just clippy
+
+  fmt:
+    docker:
+      - image: cimg/rust:1.85
+    resource_class: small
+    steps:
+      - checkout
+      - install_just
+      - run:
+          name: "Check formatting"
+          command: just fmt-check
+
+  doc:
+    docker:
+      - image: cimg/rust:1.85
+    resource_class: medium
+    steps:
+      - checkout
+      - install_just
+      - setup_rust_cache
+      - attach_workspace:
+          at: .
+      - run:
+          name: "Build documentation"
+          command: just doc
+      - store_artifacts:
+          path: target/doc
+          destination: docs
+
 workflows:
-  say-hello-workflow: # This is the name of the workflow, feel free to change it to better match your workflow.
-    # Inside the workflow, you define the jobs you want to run.
+  version: 2
+  ci:
     jobs:
-      - say-hello
+      - build
+      - test:
+          requires:
+            - build
+      - clippy:
+          requires:
+            - build
+      - fmt
+      - doc:
+          requires:
+            - build

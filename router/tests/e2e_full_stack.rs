@@ -34,8 +34,7 @@ impl TestProcess {
             cmd.args(args);
         }
 
-        let child = cmd.spawn()
-            .context(format!("Failed to start {}", name))?;
+        let child = cmd.spawn().context(format!("Failed to start {}", name))?;
 
         Ok(Self {
             child,
@@ -68,9 +67,7 @@ fn discover_adapter_id() -> Result<String> {
     println!("Discovering adapter ToolId...");
     thread::sleep(Duration::from_millis(500));
 
-    let output = Command::new("pgrep")
-        .args(&["-f", "gbe-router"])
-        .output()?;
+    let output = Command::new("pgrep").args(&["-f", "gbe-router"]).output()?;
 
     if output.status.success() {
         let pid_str = String::from_utf8_lossy(&output.stdout);

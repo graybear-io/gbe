@@ -65,7 +65,16 @@ impl AdapterProcess {
         println!("\nStarting adapter (seq 1 5)...");
 
         let child = Command::new("cargo")
-            .args(&["run", "--package", "gbe-adapter", "--quiet", "--", "seq", "1", "5"])
+            .args(&[
+                "run",
+                "--package",
+                "gbe-adapter",
+                "--quiet",
+                "--",
+                "seq",
+                "1",
+                "5",
+            ])
             .spawn()
             .context("Failed to start adapter")?;
 
@@ -83,9 +92,7 @@ impl AdapterProcess {
 
         // Try to read router PID from socket path or process list
         // Simple heuristic: recent router process
-        let output = Command::new("pgrep")
-            .args(&["-f", "gbe-router"])
-            .output()?;
+        let output = Command::new("pgrep").args(&["-f", "gbe-router"]).output()?;
 
         if output.status.success() {
             let pid_str = String::from_utf8_lossy(&output.stdout);
@@ -120,15 +127,15 @@ fn main() -> Result<()> {
     thread::sleep(Duration::from_millis(500));
 
     // Discover adapter's ToolId
-    let adapter_tool_id = AdapterProcess::discover_tool_id()
-        .context("Failed to discover adapter ToolId")?;
+    let adapter_tool_id =
+        AdapterProcess::discover_tool_id().context("Failed to discover adapter ToolId")?;
 
     println!("✓ Discovered adapter ToolId: {}", adapter_tool_id);
 
     // Connect to router as subscriber
     println!("\nConnecting to router as subscriber...");
-    let router_stream = UnixStream::connect("/tmp/gbe-router.sock")
-        .context("Failed to connect to router")?;
+    let router_stream =
+        UnixStream::connect("/tmp/gbe-router.sock").context("Failed to connect to router")?;
 
     let mut router_writer = router_stream.try_clone()?;
     let mut router_reader = BufReader::new(router_stream);
@@ -162,7 +169,10 @@ fn main() -> Result<()> {
     let sub_ack: ControlMessage = serde_json::from_str(line.trim())?;
 
     let data_addr = match sub_ack {
-        ControlMessage::SubscribeAck { data_connect_address, .. } => {
+        ControlMessage::SubscribeAck {
+            data_connect_address,
+            ..
+        } => {
             println!("✓ Subscription successful");
             data_connect_address
         }
@@ -173,12 +183,13 @@ fn main() -> Result<()> {
     };
 
     // Connect to data channel
-    let socket_path = data_addr.strip_prefix("unix://")
+    let socket_path = data_addr
+        .strip_prefix("unix://")
         .context("Invalid data address")?;
 
     println!("\nConnecting to data channel...");
-    let mut data_stream = UnixStream::connect(socket_path)
-        .context("Failed to connect to data channel")?;
+    let mut data_stream =
+        UnixStream::connect(socket_path).context("Failed to connect to data channel")?;
     println!("✓ Data channel connected");
 
     // Read data frames
@@ -204,7 +215,8 @@ fn main() -> Result<()> {
                     || err_str.contains("EOF")
                     || err_str.contains("timed out")
                     || err_str.contains("Unexpected end")
-                    || err_str.contains("failed to fill whole buffer") {
+                    || err_str.contains("failed to fill whole buffer")
+                {
                     break;
                 }
                 anyhow::bail!("Error reading frame: {}", e);
