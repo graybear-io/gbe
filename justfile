@@ -88,11 +88,11 @@ run-client +ARGS:
 
 # Quick E2E test with simple script
 e2e-simple:
-    ./test_simple.sh
+    ./scripts/test_simple.sh
 
 # Interactive E2E test
 e2e-interactive:
-    ./test_interactive.sh
+    ./scripts/test_interactive.sh
 
 # Check project for common issues
 check:
