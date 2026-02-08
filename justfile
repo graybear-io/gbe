@@ -13,10 +13,16 @@ build:
 build-release:
     cargo build --workspace --all-targets --release
 
+# Build all binaries and dependencies
+build-bins:
+    @echo "Building all binaries and dependencies..."
+    cargo build --workspace --bins
+    @echo "Building test dependencies..."
+    cargo build --workspace --tests
+    @echo "✓ All binaries built"
+
 # Run all tests (unit + integration + e2e)
-test:
-    @echo "Building all packages first..."
-    cargo build --workspace --all-targets
+test: build-bins
     @echo "Running tests..."
     cargo test --workspace --lib
     cargo test --workspace --test '*'
