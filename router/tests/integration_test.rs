@@ -1,99 +1,25 @@
 //! Integration tests for gbe-router
 
+mod test_harness;
+
 use anyhow::Result;
 use gbe_protocol::ControlMessage;
-use std::io::{BufRead, BufReader, Write};
-use std::os::unix::net::UnixStream;
-use std::process::{Child, Command};
-use std::thread;
-use std::time::Duration;
-
-struct RouterProcess {
-    child: Child,
-    socket_path: String,
-}
-
-impl RouterProcess {
-    fn start() -> Result<Self> {
-        // Use unique socket path per test to avoid collisions when running in parallel
-        let socket_path = format!("/tmp/gbe-router-test-{}.sock", std::process::id());
-
-        // Clean up old socket
-        let _ = std::fs::remove_file(&socket_path);
-
-        // Get pre-built router binary path
-        let router_bin = std::env::var("CARGO_BIN_EXE_gbe-router").unwrap_or_else(|_| {
-            // Convert relative path to absolute
-            let mut path = std::env::current_dir().unwrap();
-            path.push("../target/debug/gbe-router");
-            path.canonicalize().unwrap().to_str().unwrap().to_string()
-        });
-
-        // Start router in background
-        let child = Command::new(&router_bin)
-            .args(["--socket", &socket_path])
-            .spawn()
-            .map_err(|e| anyhow::anyhow!("Failed to start router at {}: {}", router_bin, e))?;
-
-        // Wait for router to start
-        thread::sleep(Duration::from_millis(100));
-
-        Ok(Self { child, socket_path })
-    }
-
-    fn connect(&self) -> Result<TestConnection> {
-        let stream = UnixStream::connect(&self.socket_path)?;
-        Ok(TestConnection::new(stream))
-    }
-}
-
-impl Drop for RouterProcess {
-    fn drop(&mut self) {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
-        let _ = std::fs::remove_file(&self.socket_path);
-    }
-}
-
-struct TestConnection {
-    reader: BufReader<UnixStream>,
-    writer: UnixStream,
-}
-
-impl TestConnection {
-    fn new(stream: UnixStream) -> Self {
-        let writer = stream.try_clone().unwrap();
-        let reader = BufReader::new(stream);
-        Self { reader, writer }
-    }
-
-    fn send(&mut self, msg: &ControlMessage) -> Result<()> {
-        let json = serde_json::to_string(msg)?;
-        writeln!(self.writer, "{}", json)?;
-        self.writer.flush()?;
-        Ok(())
-    }
-
-    fn recv(&mut self) -> Result<ControlMessage> {
-        let mut line = String::new();
-        self.reader.read_line(&mut line)?;
-        Ok(serde_json::from_str(line.trim())?)
-    }
-}
+use test_harness::TestEnv;
 
 #[test]
 #[ignore] // Requires router binary
 fn test_connect_and_disconnect() -> Result<()> {
-    let router = RouterProcess::start()?;
-    let mut conn = router.connect()?;
+    let mut env = TestEnv::new()?;
+    env.start_router()?;
+    let mut client = env.connect_client()?;
 
     // Send Connect
-    conn.send(&ControlMessage::Connect {
+    client.send(&ControlMessage::Connect {
         capabilities: vec!["pty".to_string()],
     })?;
 
     // Receive ConnectAck
-    match conn.recv()? {
+    match client.recv()? {
         ControlMessage::ConnectAck {
             tool_id,
             data_listen_address,
@@ -105,7 +31,7 @@ fn test_connect_and_disconnect() -> Result<()> {
     }
 
     // Send Disconnect
-    conn.send(&ControlMessage::Disconnect)?;
+    client.send(&ControlMessage::Disconnect)?;
 
     Ok(())
 }
@@ -113,10 +39,11 @@ fn test_connect_and_disconnect() -> Result<()> {
 #[test]
 #[ignore] // Requires router binary
 fn test_subscribe_to_tool() -> Result<()> {
-    let router = RouterProcess::start()?;
+    let mut env = TestEnv::new()?;
+    env.start_router()?;
 
     // Tool A connects
-    let mut tool_a = router.connect()?;
+    let mut tool_a = env.connect_client()?;
     tool_a.send(&ControlMessage::Connect {
         capabilities: vec![],
     })?;
@@ -127,7 +54,7 @@ fn test_subscribe_to_tool() -> Result<()> {
     };
 
     // Tool B connects
-    let mut tool_b = router.connect()?;
+    let mut tool_b = env.connect_client()?;
     tool_b.send(&ControlMessage::Connect {
         capabilities: vec!["raw".to_string()],
     })?;
@@ -156,22 +83,23 @@ fn test_subscribe_to_tool() -> Result<()> {
 #[test]
 #[ignore] // Requires router binary
 fn test_subscribe_to_unknown_tool() -> Result<()> {
-    let router = RouterProcess::start()?;
+    let mut env = TestEnv::new()?;
+    env.start_router()?;
 
-    let mut conn = router.connect()?;
+    let mut client = env.connect_client()?;
 
     // Connect
-    conn.send(&ControlMessage::Connect {
+    client.send(&ControlMessage::Connect {
         capabilities: vec![],
     })?;
-    let _ = conn.recv()?; // Consume ConnectAck
+    let _ = client.recv()?; // Consume ConnectAck
 
     // Subscribe to non-existent tool
-    conn.send(&ControlMessage::Subscribe {
+    client.send(&ControlMessage::Subscribe {
         target: "99999-999".to_string(),
     })?;
 
-    match conn.recv()? {
+    match client.recv()? {
         ControlMessage::Error { code, message } => {
             assert_eq!(code, "NOT_FOUND");
             assert!(message.contains("not found"));
@@ -185,10 +113,11 @@ fn test_subscribe_to_unknown_tool() -> Result<()> {
 #[test]
 #[ignore] // Requires router binary
 fn test_query_capabilities() -> Result<()> {
-    let router = RouterProcess::start()?;
+    let mut env = TestEnv::new()?;
+    env.start_router()?;
 
     // Tool A connects with capabilities
-    let mut tool_a = router.connect()?;
+    let mut tool_a = env.connect_client()?;
     tool_a.send(&ControlMessage::Connect {
         capabilities: vec!["pty".to_string(), "color".to_string()],
     })?;
@@ -199,7 +128,7 @@ fn test_query_capabilities() -> Result<()> {
     };
 
     // Tool B queries A's capabilities
-    let mut tool_b = router.connect()?;
+    let mut tool_b = env.connect_client()?;
     tool_b.send(&ControlMessage::Connect {
         capabilities: vec![],
     })?;
