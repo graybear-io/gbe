@@ -111,8 +111,10 @@ impl TestEnv {
 
     /// Connect a test client to the router
     pub fn connect_client(&self) -> Result<ClientConnection> {
-        let stream = UnixStream::connect(&self.router_socket)
-            .context(format!("Failed to connect to router at {}", self.router_socket))?;
+        let stream = UnixStream::connect(&self.router_socket).context(format!(
+            "Failed to connect to router at {}",
+            self.router_socket
+        ))?;
 
         let writer = stream.try_clone()?;
         let reader = BufReader::new(stream);
