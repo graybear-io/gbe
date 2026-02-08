@@ -15,6 +15,9 @@ build-release:
 
 # Run all tests (unit + integration + e2e)
 test:
+    @echo "Building all packages first..."
+    cargo build --workspace --all-targets
+    @echo "Running tests..."
     cargo test --workspace --lib
     cargo test --workspace --test '*'
     cargo test --workspace -- --ignored --nocapture

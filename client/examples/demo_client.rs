@@ -12,8 +12,6 @@ use anyhow::{Context, Result};
 use gbe_protocol::{ControlMessage, DataFrame};
 use std::os::unix::net::UnixStream;
 use std::process::Command;
-use std::thread;
-use std::time::Duration;
 
 fn main() -> Result<()> {
     println!("GBE Client Demo");
@@ -37,7 +35,7 @@ fn main() -> Result<()> {
 
     // Receive ConnectAck
     let response = recv_message(&mut control_reader)?;
-    let tool_id = match response {
+    let _tool_id = match response {
         ControlMessage::ConnectAck { tool_id, .. } => {
             println!("✓ Connected! ToolId: {}", tool_id);
             tool_id
@@ -130,7 +128,7 @@ fn recv_message(reader: &mut std::io::BufReader<UnixStream>) -> Result<ControlMe
 
 fn discover_adapter_id() -> Result<String> {
     // Try to find router process and construct adapter ToolId
-    let output = Command::new("pgrep").args(&["-f", "gbe-router"]).output()?;
+    let output = Command::new("pgrep").args(["-f", "gbe-router"]).output()?;
 
     if output.status.success() {
         let pid_str = String::from_utf8_lossy(&output.stdout);
