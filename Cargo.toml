@@ -5,6 +5,7 @@ members = [
     "adapter",
     "buffer",
     "client",
+    "proxy",
 ]
 resolver = "2"
 
