@@ -23,17 +23,11 @@ struct TestProcess {
 }
 
 impl TestProcess {
-    fn start(name: &str, package: &str, args: &[&str]) -> Result<Self> {
-        println!("Starting {}...", name);
+    fn start(name: &str, bin_path: &str, args: &[&str]) -> Result<Self> {
+        println!("Starting {} from {}...", name, bin_path);
 
-        let mut cmd = Command::new("cargo");
-        cmd.args(["run", "--package", package]);
-        // Don't use --quiet so we can see logs in CI
-
-        if !args.is_empty() {
-            cmd.arg("--");
-            cmd.args(args);
-        }
+        let mut cmd = Command::new(bin_path);
+        cmd.args(args);
 
         // Inherit stdout/stderr so we can see errors
         cmd.stdout(std::process::Stdio::inherit());
@@ -223,13 +217,23 @@ fn test_full_stack_integration() -> Result<()> {
     // Clean up any old sockets
     let _ = std::fs::remove_file("/tmp/gbe-router.sock");
 
+    // Get pre-built binary paths
+    // Try workspace root target dir first (../target from router package)
+    let router_bin = std::env::var("CARGO_BIN_EXE_gbe-router")
+        .unwrap_or_else(|_| "../target/debug/gbe-router".to_string());
+    let adapter_bin = std::env::var("CARGO_BIN_EXE_gbe-adapter")
+        .unwrap_or_else(|_| "../target/debug/gbe-adapter".to_string());
+
+    println!("Using router binary: {}", router_bin);
+    println!("Using adapter binary: {}", adapter_bin);
+
     // Start router
-    let router = TestProcess::start("router", "gbe-router", &[])?;
+    let router = TestProcess::start("router", &router_bin, &[])?;
     println!("Router started (PID: {})", router.child.id());
     wait_for_router()?;
 
     // Start adapter with "seq 1 10"
-    let adapter = TestProcess::start("adapter", "gbe-adapter", &["seq", "1", "10"])?;
+    let adapter = TestProcess::start("adapter", &adapter_bin, &["seq", "1", "10"])?;
     thread::sleep(Duration::from_millis(500));
     println!("✓ Adapter started (PID: {})", adapter.child.id());
 

@@ -20,17 +20,23 @@ impl RouterProcess {
         // Clean up old socket
         let _ = std::fs::remove_file(socket_path);
 
+        // Get pre-built router binary path
+        let router_bin = std::env::var("CARGO_BIN_EXE_gbe-router")
+            .unwrap_or_else(|_| {
+                // Convert relative path to absolute
+                let mut path = std::env::current_dir().unwrap();
+                path.push("../target/debug/gbe-router");
+                path.canonicalize().unwrap().to_str().unwrap().to_string()
+            });
+
+        eprintln!("DEBUG: Using router binary: {}", router_bin);
+        eprintln!("DEBUG: Binary exists: {}", std::path::Path::new(&router_bin).exists());
+
         // Start router in background
-        let child = Command::new("cargo")
-            .args([
-                "run",
-                "--package",
-                "gbe-router",
-                "--",
-                "--socket",
-                socket_path,
-            ])
-            .spawn()?;
+        let child = Command::new(&router_bin)
+            .args(["--socket", socket_path])
+            .spawn()
+            .map_err(|e| anyhow::anyhow!("Failed to start router at {}: {}", router_bin, e))?;
 
         // Wait for router to start
         thread::sleep(Duration::from_millis(100));

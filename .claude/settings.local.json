@@ -7,7 +7,12 @@
       "Bash(cargo test:*)",
       "Bash(cargo check:*)",
       "Bash(cargo add:*)",
-      "Bash(cargo build:*)"
+      "Bash(cargo build:*)",
+      "Bash(just:*)",
+      "Bash(circleci config validate:*)",
+      "Bash(rustc:*)",
+      "Skill(beads)",
+      "Bash(otool:*)"
     ]
   }
 }
