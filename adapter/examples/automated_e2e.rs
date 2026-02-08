@@ -28,7 +28,7 @@ impl RouterProcess {
 
         println!("Starting router...");
         let child = Command::new("cargo")
-            .args(&["run", "--package", "gbe-router", "--quiet"])
+            .args(["run", "--package", "gbe-router", "--quiet"])
             .spawn()
             .context("Failed to start router")?;
 
@@ -65,7 +65,7 @@ impl AdapterProcess {
         println!("\nStarting adapter (seq 1 5)...");
 
         let child = Command::new("cargo")
-            .args(&[
+            .args([
                 "run",
                 "--package",
                 "gbe-adapter",
@@ -92,7 +92,7 @@ impl AdapterProcess {
 
         // Try to read router PID from socket path or process list
         // Simple heuristic: recent router process
-        let output = Command::new("pgrep").args(&["-f", "gbe-router"]).output()?;
+        let output = Command::new("pgrep").args(["-f", "gbe-router"]).output()?;
 
         if output.status.success() {
             let pid_str = String::from_utf8_lossy(&output.stdout);

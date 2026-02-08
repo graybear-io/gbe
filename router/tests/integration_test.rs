@@ -22,7 +22,7 @@ impl RouterProcess {
 
         // Start router in background
         let child = Command::new("cargo")
-            .args(&[
+            .args([
                 "run",
                 "--package",
                 "gbe-router",

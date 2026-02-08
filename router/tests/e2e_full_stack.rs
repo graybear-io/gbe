@@ -27,7 +27,7 @@ impl TestProcess {
         println!("Starting {}...", name);
 
         let mut cmd = Command::new("cargo");
-        cmd.args(&["run", "--package", package]);
+        cmd.args(["run", "--package", package]);
         // Don't use --quiet so we can see logs in CI
 
         if !args.is_empty() {
@@ -71,7 +71,7 @@ fn wait_for_router() -> Result<()> {
 
     // Check if router process is still running
     let ps_output = Command::new("pgrep")
-        .args(&["-f", "gbe-router"])
+        .args(["-f", "gbe-router"])
         .output()
         .ok();
 
@@ -90,7 +90,7 @@ fn discover_adapter_id() -> Result<String> {
     println!("Discovering adapter ToolId...");
     thread::sleep(Duration::from_millis(500));
 
-    let output = Command::new("pgrep").args(&["-f", "gbe-router"]).output()?;
+    let output = Command::new("pgrep").args(["-f", "gbe-router"]).output()?;
 
     if output.status.success() {
         let pid_str = String::from_utf8_lossy(&output.stdout);
