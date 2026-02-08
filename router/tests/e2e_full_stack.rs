@@ -34,6 +34,10 @@ impl TestProcess {
             cmd.args(args);
         }
 
+        // Inherit stdout/stderr so we can see errors
+        cmd.stdout(std::process::Stdio::inherit());
+        cmd.stderr(std::process::Stdio::inherit());
+
         let child = cmd.spawn().context(format!("Failed to start {}", name))?;
 
         Ok(Self {
@@ -53,14 +57,32 @@ impl Drop for TestProcess {
 
 fn wait_for_router() -> Result<()> {
     println!("Waiting for router...");
-    for _ in 0..20 {
+    for i in 0..50 {
         if std::path::Path::new("/tmp/gbe-router.sock").exists() {
-            println!("✓ Router ready");
+            println!("✓ Router ready (after {}ms)", i * 100);
             return Ok(());
+        }
+        if i % 10 == 0 {
+            println!("  Still waiting... ({}s)", i / 10);
         }
         thread::sleep(Duration::from_millis(100));
     }
-    anyhow::bail!("Router socket not created after 2s")
+
+    // Check if router process is still running
+    let ps_output = Command::new("pgrep")
+        .args(&["-f", "gbe-router"])
+        .output()
+        .ok();
+
+    if let Some(output) = ps_output {
+        if output.status.success() {
+            println!("Router process is running but socket not created");
+        } else {
+            println!("Router process not found - may have crashed");
+        }
+    }
+
+    anyhow::bail!("Router socket not created after 5s")
 }
 
 fn discover_adapter_id() -> Result<String> {

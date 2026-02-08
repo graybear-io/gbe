@@ -207,7 +207,8 @@ mod tests {
     #[test]
     fn test_delete_invalid_range() {
         let mut buf = RopeBuffer::with_content("hello");
-        let result = buf.delete(3..2);
+        // Test out-of-bounds range (buffer is only 5 chars)
+        let result = buf.delete(10..20);
         assert!(result.is_err());
     }
 
