@@ -51,10 +51,10 @@ impl Drop for TestProcess {
     }
 }
 
-fn wait_for_router() -> Result<()> {
+fn wait_for_router(socket_path: &str) -> Result<()> {
     println!("Waiting for router...");
     for i in 0..50 {
-        if std::path::Path::new("/tmp/gbe-router.sock").exists() {
+        if std::path::Path::new(socket_path).exists() {
             println!("✓ Router ready (after {}ms)", i * 100);
             return Ok(());
         }
@@ -111,10 +111,14 @@ impl RouterConnection {
     }
 }
 
-fn connect_client(name: &str, target: &str) -> Result<(RouterConnection, UnixStream)> {
+fn connect_client(
+    name: &str,
+    socket_path: &str,
+    target: &str,
+) -> Result<(RouterConnection, UnixStream)> {
     println!("\n{} connecting to router...", name);
 
-    let mut router_conn = RouterConnection::connect("/tmp/gbe-router.sock")?;
+    let mut router_conn = RouterConnection::connect(socket_path)?;
 
     // Connect
     router_conn.send(&ControlMessage::Connect {
@@ -217,8 +221,9 @@ fn read_data_frames(
 fn test_multi_client_proxy() -> Result<()> {
     println!("\n=== GBE Multi-Client E2E Test ===\n");
 
-    // Clean up any old sockets
-    let _ = std::fs::remove_file("/tmp/gbe-router.sock");
+    // Use unique socket path to avoid conflicts with parallel tests
+    let socket_path = format!("/tmp/gbe-router-test-multi-{}.sock", std::process::id());
+    let _ = std::fs::remove_file(&socket_path);
 
     // Get pre-built binary paths
     let router_bin = std::env::var("CARGO_BIN_EXE_gbe-router")
@@ -228,11 +233,12 @@ fn test_multi_client_proxy() -> Result<()> {
 
     println!("Using router binary: {}", router_bin);
     println!("Using adapter binary: {}", adapter_bin);
+    println!("Using socket: {}", socket_path);
 
-    // Start router
-    let router = TestProcess::start("router", &router_bin, &[])?;
+    // Start router with unique socket
+    let router = TestProcess::start("router", &router_bin, &["--socket", &socket_path])?;
     println!("Router started (PID: {})", router.child.id());
-    wait_for_router()?;
+    wait_for_router(&socket_path)?;
 
     // Start adapter with a longer-running command (100 lines with delay)
     // This ensures adapter stays alive while both clients connect
@@ -255,8 +261,8 @@ fn test_multi_client_proxy() -> Result<()> {
     // This tests the real-world scenario: multiple viewers of a running tool
     println!("\n--- Connecting both clients (parallel subscription) ---");
 
-    let (_router_conn1, data_stream1) = connect_client("Client1", &adapter_id)?;
-    let (_router_conn2, data_stream2) = connect_client("Client2", &adapter_id)?;
+    let (_router_conn1, data_stream1) = connect_client("Client1", &socket_path, &adapter_id)?;
+    let (_router_conn2, data_stream2) = connect_client("Client2", &socket_path, &adapter_id)?;
 
     // Check if proxy was spawned
     thread::sleep(Duration::from_millis(200));
@@ -333,8 +339,9 @@ fn test_multi_client_proxy() -> Result<()> {
 fn test_subscribe_to_dead_tool() -> Result<()> {
     println!("\n=== GBE Subscribe to Dead Tool Test ===\n");
 
-    // Clean up any old sockets
-    let _ = std::fs::remove_file("/tmp/gbe-router.sock");
+    // Use unique socket path to avoid conflicts with parallel tests
+    let socket_path = format!("/tmp/gbe-router-test-dead-{}.sock", std::process::id());
+    let _ = std::fs::remove_file(&socket_path);
 
     // Get pre-built binary paths
     let router_bin = std::env::var("CARGO_BIN_EXE_gbe-router")
@@ -344,11 +351,12 @@ fn test_subscribe_to_dead_tool() -> Result<()> {
 
     println!("Using router binary: {}", router_bin);
     println!("Using adapter binary: {}", adapter_bin);
+    println!("Using socket: {}", socket_path);
 
-    // Start router
-    let router = TestProcess::start("router", &router_bin, &[])?;
+    // Start router with unique socket
+    let router = TestProcess::start("router", &router_bin, &["--socket", &socket_path])?;
     println!("Router started (PID: {})", router.child.id());
-    wait_for_router()?;
+    wait_for_router(&socket_path)?;
 
     // Start adapter with a short-lived command
     let adapter = TestProcess::start("adapter", &adapter_bin, &["sh", "-c", "echo done"])?;
@@ -367,7 +375,7 @@ fn test_subscribe_to_dead_tool() -> Result<()> {
     // Try to subscribe to the dead tool
     println!("\n--- Attempting to subscribe to dead tool ---");
 
-    let result = connect_client("Client", &adapter_id);
+    let result = connect_client("Client", &socket_path, &adapter_id);
 
     match result {
         Err(e) => {
