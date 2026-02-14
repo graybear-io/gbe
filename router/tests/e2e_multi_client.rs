@@ -166,7 +166,10 @@ fn read_data_frames(
     mut stream: UnixStream,
     expected_count: usize,
 ) -> Result<Vec<String>> {
-    println!("\n{} reading data frames (expecting {})...", name, expected_count);
+    println!(
+        "\n{} reading data frames (expecting {})...",
+        name, expected_count
+    );
 
     let mut lines = Vec::new();
     let mut count = 0;
@@ -236,7 +239,11 @@ fn test_multi_client_proxy() -> Result<()> {
     let adapter = TestProcess::start(
         "adapter",
         &adapter_bin,
-        &["sh", "-c", "for i in $(seq 1 100); do echo $i; sleep 0.01; done"],
+        &[
+            "sh",
+            "-c",
+            "for i in $(seq 1 100); do echo $i; sleep 0.01; done",
+        ],
     )?;
     thread::sleep(Duration::from_millis(500));
     println!("✓ Adapter started (PID: {})", adapter.child.id());
@@ -256,9 +263,7 @@ fn test_multi_client_proxy() -> Result<()> {
 
     // Check if proxy was spawned
     thread::sleep(Duration::from_millis(200));
-    let proxy_check = Command::new("pgrep")
-        .args(["-f", "gbe-proxy"])
-        .output()?;
+    let proxy_check = Command::new("pgrep").args(["-f", "gbe-proxy"]).output()?;
 
     if proxy_check.status.success() {
         println!("\n✓ Proxy process detected (multi-subscriber tee active)");

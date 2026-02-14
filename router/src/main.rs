@@ -46,6 +46,7 @@ struct RouterState {
 /// Information about a connected tool
 #[derive(Debug, Clone)]
 struct ConnectionInfo {
+    #[allow(dead_code)] // May be used for debugging/logging in future
     tool_id: ToolId,
     data_listen_address: String,
     capabilities: Vec<String>,
@@ -55,10 +56,12 @@ struct ConnectionInfo {
 #[derive(Debug)]
 struct ProxyInfo {
     /// Proxy subprocess handle
+    #[allow(dead_code)] // Kept for future cleanup/lifecycle management
     child: Child,
     /// Proxy listen address (where subscribers connect)
     listen_address: String,
     /// Source tool this proxy is teeing
+    #[allow(dead_code)] // May be used for debugging/logging in future
     source_tool_id: ToolId,
 }
 
@@ -143,21 +146,17 @@ impl RouterState {
         let proxy_socket_path = proxy_listen.strip_prefix("unix://").unwrap();
         let _ = std::fs::remove_file(proxy_socket_path);
 
-        info!(
-            "Spawning proxy for {} at {}",
-            source, proxy_socket_path
-        );
+        info!("Spawning proxy for {} at {}", source, proxy_socket_path);
 
         // Try to find gbe-proxy binary
-        let proxy_bin = std::env::var("GBE_PROXY_BIN")
-            .unwrap_or_else(|_| {
-                // Try relative path from router binary location
-                std::env::current_exe()
-                    .ok()
-                    .and_then(|p| p.parent().map(|d| d.join("gbe-proxy")))
-                    .and_then(|p| p.to_str().map(String::from))
-                    .unwrap_or_else(|| "gbe-proxy".to_string())
-            });
+        let proxy_bin = std::env::var("GBE_PROXY_BIN").unwrap_or_else(|_| {
+            // Try relative path from router binary location
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.join("gbe-proxy")))
+                .and_then(|p| p.to_str().map(String::from))
+                .unwrap_or_else(|| "gbe-proxy".to_string())
+        });
 
         let child = Command::new(&proxy_bin)
             .arg("--router")
@@ -165,7 +164,7 @@ impl RouterState {
             .arg("--upstream")
             .arg(upstream_address)
             .arg("--listen")
-            .arg(&proxy_listen)  // Pass full unix:// address
+            .arg(&proxy_listen) // Pass full unix:// address
             .arg("--mode")
             .arg("framed")
             .spawn()
@@ -175,7 +174,8 @@ impl RouterState {
 
         // Wait for proxy socket to be created (with timeout)
         let socket_path = std::path::Path::new(proxy_socket_path);
-        for _ in 0..50 {  // 5 seconds max
+        for _ in 0..50 {
+            // 5 seconds max
             if socket_path.exists() {
                 debug!("✓ Proxy socket ready");
                 break;
@@ -208,6 +208,7 @@ impl RouterState {
     }
 
     /// Check if proxy exists for a source
+    #[allow(dead_code)] // May be used for optimization logic in future
     fn has_proxy(&self, source: &ToolId) -> bool {
         let proxies = self.proxies.lock().unwrap();
         proxies.contains_key(source)
@@ -295,7 +296,9 @@ fn handle_connection(stream: UnixStream, state: RouterState) -> Result<()> {
 
                                 // Always use proxy for consistency (Phase 1 simplification)
                                 // This ensures all subscribers can receive data reliably
-                                let data_address = if let Some(proxy_addr) = state.get_proxy_address(&target) {
+                                let data_address = if let Some(proxy_addr) =
+                                    state.get_proxy_address(&target)
+                                {
                                     info!("Using existing proxy at {}", proxy_addr);
                                     proxy_addr
                                 } else {
