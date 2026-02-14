@@ -349,21 +349,27 @@ fn test_subscribe_to_dead_tool() -> Result<()> {
     println!("Router started (PID: {})", router_pid);
     wait_for_router(&socket_path)?;
 
-    // Start adapter with a short-lived command
-    let adapter = TestProcess::start(
-        "adapter",
-        &adapter_bin,
-        &["--router", &socket_path, "sh", "-c", "echo done"],
-    )?;
-    thread::sleep(Duration::from_millis(500));
-    println!("✓ Adapter started (PID: {})", adapter.child.id());
-
-    // Get adapter ToolId from router PID
+    // Get adapter ToolId from router PID (before starting adapter)
     let adapter_id = get_adapter_id(router_pid);
 
-    // Wait for adapter to complete and disconnect
-    println!("\nWaiting for adapter command to complete...");
-    thread::sleep(Duration::from_millis(500));
+    // Start adapter with a short-lived command in a block scope
+    // The TestProcess::Drop will kill the adapter when the block ends
+    {
+        let adapter = TestProcess::start(
+            "adapter",
+            &adapter_bin,
+            &["--router", &socket_path, "sh", "-c", "echo done"],
+        )?;
+        thread::sleep(Duration::from_millis(500));
+        println!("✓ Adapter started (PID: {})", adapter.child.id());
+
+        // Wait for command to complete
+        println!("\nWaiting for adapter command to complete...");
+        thread::sleep(Duration::from_millis(500));
+    } // adapter drops here, TestProcess::Drop kills it
+
+    // Give router time to process disconnection
+    thread::sleep(Duration::from_millis(200));
 
     // Poll router until tool disconnects (with timeout)
     println!("Polling router until tool {} disconnects...", adapter_id);
