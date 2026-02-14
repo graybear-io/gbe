@@ -71,7 +71,8 @@ fn test_subscribe_to_tool() -> Result<()> {
             data_connect_address,
             capabilities,
         } => {
-            assert!(data_connect_address.contains(&tool_a_id));
+            // Router always spawns proxy (Phase 1 simplification)
+            assert!(data_connect_address.contains("gbe-proxy"));
             assert_eq!(capabilities.len(), 0);
         }
         msg => panic!("Expected SubscribeAck, got {:?}", msg),
