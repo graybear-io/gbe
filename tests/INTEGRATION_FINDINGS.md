@@ -5,14 +5,16 @@
 
 ---
 
-## Critical Finding: Proxy Integration Not Complete
+## ✅ RESOLVED: Proxy Integration Complete
 
-### Issue
-Multi-client subscription does not work correctly. When multiple clients subscribe to the same tool:
-- Router returns the same direct data address to all subscribers
-- Only the first client to read receives data
-- Subsequent clients receive empty streams or broken pipe errors
-- No proxy subprocess is spawned
+### Original Issue (RESOLVED 2026-02-14)
+Multi-client subscription did not work correctly. When multiple clients subscribed to the same tool:
+- Router returned the same direct data address to all subscribers
+- Only the first client to read received data
+- Subsequent clients received empty streams or broken pipe errors
+- No proxy subprocess was spawned
+
+**Status:** ✅ FIXED in commit `17bf682`
 
 ### Root Cause
 **File:** `router/src/main.rs`
@@ -80,21 +82,24 @@ ERROR Failed to write stdout frame: Broken pipe
 - Single-client scenarios work correctly ✓
 - Direct routing (1:1) works ✓
 
-### Recommendation
+### Resolution
 
-**Option 1: Implement proxy spawning in router (HIGH PRIORITY)**
-- Add subscriber count tracking per tool
-- Detect when count transitions 1 → 2
-- Spawn `gbe-proxy` subprocess
-- Return proxy address to all subscribers
-- Handle proxy lifecycle (cleanup on disconnect)
+**✅ Implemented proxy spawning in router (commit 17bf682)**
 
-**Option 2: Document as Phase 2**
-- Mark multi-client support as Phase 2 feature
-- Update Phase 1 acceptance criteria
-- Close Phase 1 with single-client support only
+**Implementation:**
+- Added ProxyInfo struct and proxies HashMap to RouterState
+- Modified Subscribe handler to always spawn proxy
+- Proxy waits for socket creation before returning
+- Both single and multi-client scenarios now use proxy
 
-**Decision needed from user.**
+**Approach:** "Always proxy" for Phase 1 consistency
+- Simpler logic, no race conditions
+- ~100ms startup overhead (acceptable)
+- Can optimize to direct-connect for single subscriber in Phase 2
+
+**Testing:**
+- ✅ `e2e_multi_client.rs` - PASSING (both clients receive data)
+- ✅ `e2e_full_stack.rs` - PASSING (single client via proxy)
 
 ---
 

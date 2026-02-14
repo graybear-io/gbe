@@ -50,17 +50,21 @@
 
 ---
 
-## ❌ Testing Gaps (Required by gbe-1dv.9)
+## ✅ Recently Completed
 
 ### 1. Multiple Subscribers (Proxy/Tee)
 **Requirement:** "Multiple clients (attach/detach)"
-**Status:** ❌ NOT TESTED
-- Proxy subprocess spawning
-- Data duplication to N subscribers
-- Backpressure monitoring
-- Subscriber disconnect handling
+**Status:** ✅ COMPLETE (2026-02-14)
+- ✅ Proxy subprocess spawning
+- ✅ Data duplication to N subscribers
+- ⚠️ Backpressure monitoring (logged, not acted on yet)
+- ✅ Subscriber disconnect handling
 
-**Test Needed:** Create test with 2+ clients subscribing to same adapter
+**Test:** `router/tests/e2e_multi_client.rs` - PASSING
+
+---
+
+## ❌ Testing Gaps (Required by gbe-1dv.9)
 
 ---
 
