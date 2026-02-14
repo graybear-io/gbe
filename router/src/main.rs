@@ -6,7 +6,7 @@
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use gbe_protocol::{ControlMessage, ToolId};
+use gbe_protocol::{ControlMessage, ToolId, ToolInfo};
 use std::collections::HashMap;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::process::{self, Child, Command};
@@ -134,6 +134,18 @@ impl RouterState {
     fn get_connection(&self, tool_id: &ToolId) -> Option<ConnectionInfo> {
         let conns = self.connections.lock().unwrap();
         conns.get(tool_id).cloned()
+    }
+
+    /// Get all connected tools (for observability)
+    fn list_tools(&self) -> Vec<ToolInfo> {
+        let conns = self.connections.lock().unwrap();
+        conns
+            .values()
+            .map(|info| ToolInfo {
+                tool_id: info.tool_id.clone(),
+                capabilities: info.capabilities.clone(),
+            })
+            .collect()
     }
 
     /// Add a subscription: subscriber wants data from source
@@ -365,6 +377,12 @@ fn handle_connection(stream: UnixStream, state: RouterState) -> Result<()> {
                         }
                     }
 
+                    ControlMessage::QueryTools => {
+                        let tools = state.list_tools();
+                        info!("Query tools: {} connected", tools.len());
+                        Some(ControlMessage::ToolsResponse { tools })
+                    }
+
                     ControlMessage::Disconnect => {
                         if let Some(tid) = &tool_id {
                             info!("Tool {} disconnected", tid);
@@ -377,6 +395,7 @@ fn handle_connection(stream: UnixStream, state: RouterState) -> Result<()> {
                     ControlMessage::ConnectAck { .. }
                     | ControlMessage::SubscribeAck { .. }
                     | ControlMessage::CapabilitiesResponse { .. }
+                    | ControlMessage::ToolsResponse { .. }
                     | ControlMessage::Error { .. }
                     | ControlMessage::FlowControl { .. } => {
                         warn!("Received unexpected message type: {:?}", msg);

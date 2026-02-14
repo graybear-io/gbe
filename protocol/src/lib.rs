@@ -140,8 +140,21 @@ pub enum ControlMessage {
     /// Response with capabilities
     CapabilitiesResponse { capabilities: Vec<String> },
 
+    /// Query all connected tools (for observability/testing)
+    QueryTools,
+
+    /// Response with list of connected tools
+    ToolsResponse { tools: Vec<ToolInfo> },
+
     /// Error message
     Error { code: String, message: String },
+}
+
+/// Information about a connected tool
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ToolInfo {
+    pub tool_id: ToolId,
+    pub capabilities: Vec<String>,
 }
 
 impl ControlMessage {

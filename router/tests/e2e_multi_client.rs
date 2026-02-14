@@ -362,9 +362,36 @@ fn test_subscribe_to_dead_tool() -> Result<()> {
     let adapter_id = get_adapter_id(router_pid);
 
     // Wait for adapter to complete and disconnect
-    println!("\nWaiting for adapter to complete...");
-    thread::sleep(Duration::from_secs(2));
-    println!("✓ Adapter should have exited by now");
+    println!("\nWaiting for adapter command to complete...");
+    thread::sleep(Duration::from_millis(500));
+
+    // Poll router until tool disconnects (with timeout)
+    println!("Polling router until tool {} disconnects...", adapter_id);
+    let mut disconnected = false;
+    for i in 0..50 {
+        // 5 seconds max
+        let mut router_conn = RouterConnection::connect(&socket_path)?;
+
+        // Query all tools
+        router_conn.send(&ControlMessage::QueryTools)?;
+        match router_conn.recv()? {
+            ControlMessage::ToolsResponse { tools } => {
+                let tool_exists = tools.iter().any(|t| t.tool_id == adapter_id);
+                if !tool_exists {
+                    println!("✓ Tool {} disconnected (after {}ms)", adapter_id, i * 100);
+                    disconnected = true;
+                    break;
+                }
+            }
+            msg => anyhow::bail!("Expected ToolsResponse, got {:?}", msg),
+        }
+
+        thread::sleep(Duration::from_millis(100));
+    }
+
+    if !disconnected {
+        anyhow::bail!("Tool {} did not disconnect after 5s", adapter_id);
+    }
 
     // Try to subscribe to the dead tool
     println!("\n--- Attempting to subscribe to dead tool ---");
