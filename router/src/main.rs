@@ -9,7 +9,7 @@ use clap::Parser;
 use gbe_protocol::{ControlMessage, ToolId};
 use std::collections::HashMap;
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::process;
+use std::process::{self, Child, Command};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tracing::{debug, error, info, warn};
@@ -38,15 +38,28 @@ struct RouterState {
 
     /// Subscriptions: source ToolId -> list of subscriber ToolIds
     subscriptions: Arc<Mutex<HashMap<ToolId, Vec<ToolId>>>>,
+
+    /// Proxies: source ToolId -> ProxyInfo (spawned when multiple subscribers)
+    proxies: Arc<Mutex<HashMap<ToolId, ProxyInfo>>>,
 }
 
 /// Information about a connected tool
 #[derive(Debug, Clone)]
 struct ConnectionInfo {
-    #[allow(dead_code)] // Used in proxy logic (TODO)
     tool_id: ToolId,
     data_listen_address: String,
     capabilities: Vec<String>,
+}
+
+/// Information about a spawned proxy subprocess
+#[derive(Debug)]
+struct ProxyInfo {
+    /// Proxy subprocess handle
+    child: Child,
+    /// Proxy listen address (where subscribers connect)
+    listen_address: String,
+    /// Source tool this proxy is teeing
+    source_tool_id: ToolId,
 }
 
 impl RouterState {
@@ -55,6 +68,7 @@ impl RouterState {
             next_seq: Arc::new(AtomicU64::new(1)),
             connections: Arc::new(Mutex::new(HashMap::new())),
             subscriptions: Arc::new(Mutex::new(HashMap::new())),
+            proxies: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -114,10 +128,89 @@ impl RouterState {
     }
 
     /// Get subscriber count for a source
-    #[allow(dead_code)] // Used in proxy spawning logic (TODO)
     fn subscriber_count(&self, source: &ToolId) -> usize {
         let subs = self.subscriptions.lock().unwrap();
         subs.get(source).map(|v| v.len()).unwrap_or(0)
+    }
+
+    /// Spawn a proxy subprocess for a source tool
+    fn spawn_proxy(&self, source: &ToolId, upstream_address: &str) -> Result<String> {
+        let pid = process::id();
+        let proxy_seq = self.next_seq.fetch_add(1, Ordering::SeqCst);
+        let proxy_listen = format!("unix:///tmp/gbe-proxy-{}-{:03}.sock", pid, proxy_seq);
+
+        // Remove socket if it exists
+        let proxy_socket_path = proxy_listen.strip_prefix("unix://").unwrap();
+        let _ = std::fs::remove_file(proxy_socket_path);
+
+        info!(
+            "Spawning proxy for {} at {}",
+            source, proxy_socket_path
+        );
+
+        // Try to find gbe-proxy binary
+        let proxy_bin = std::env::var("GBE_PROXY_BIN")
+            .unwrap_or_else(|_| {
+                // Try relative path from router binary location
+                std::env::current_exe()
+                    .ok()
+                    .and_then(|p| p.parent().map(|d| d.join("gbe-proxy")))
+                    .and_then(|p| p.to_str().map(String::from))
+                    .unwrap_or_else(|| "gbe-proxy".to_string())
+            });
+
+        let child = Command::new(&proxy_bin)
+            .arg("--router")
+            .arg("unix:///tmp/gbe-router.sock")
+            .arg("--upstream")
+            .arg(upstream_address)
+            .arg("--listen")
+            .arg(&proxy_listen)  // Pass full unix:// address
+            .arg("--mode")
+            .arg("framed")
+            .spawn()
+            .context(format!("Failed to spawn gbe-proxy from {}", proxy_bin))?;
+
+        info!("✓ Proxy spawned (PID: {})", child.id());
+
+        // Wait for proxy socket to be created (with timeout)
+        let socket_path = std::path::Path::new(proxy_socket_path);
+        for _ in 0..50 {  // 5 seconds max
+            if socket_path.exists() {
+                debug!("✓ Proxy socket ready");
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+
+        if !socket_path.exists() {
+            warn!("Proxy socket not created after 5s, may cause connection issues");
+        }
+
+        // Store proxy info
+        let mut proxies = self.proxies.lock().unwrap();
+        proxies.insert(
+            source.clone(),
+            ProxyInfo {
+                child,
+                listen_address: proxy_listen.clone(),
+                source_tool_id: source.clone(),
+            },
+        );
+
+        Ok(proxy_listen)
+    }
+
+    /// Get proxy address for a source (if proxy exists)
+    fn get_proxy_address(&self, source: &ToolId) -> Option<String> {
+        let proxies = self.proxies.lock().unwrap();
+        proxies.get(source).map(|p| p.listen_address.clone())
+    }
+
+    /// Check if proxy exists for a source
+    fn has_proxy(&self, source: &ToolId) -> bool {
+        let proxies = self.proxies.lock().unwrap();
+        proxies.contains_key(source)
     }
 }
 
@@ -191,14 +284,38 @@ fn handle_connection(stream: UnixStream, state: RouterState) -> Result<()> {
 
                         match state.get_connection(&target) {
                             Some(info) => {
+                                // Add subscription first
                                 state.add_subscription(&target, subscriber.clone());
+                                let sub_count = state.subscriber_count(&target);
 
-                                info!("Tool {} subscribed to {}", subscriber, target);
+                                info!(
+                                    "Tool {} subscribed to {} (total subscribers: {})",
+                                    subscriber, target, sub_count
+                                );
 
-                                // For Phase 1: always direct connection
-                                // TODO: spawn proxy if subscriber_count > 1
+                                // Always use proxy for consistency (Phase 1 simplification)
+                                // This ensures all subscribers can receive data reliably
+                                let data_address = if let Some(proxy_addr) = state.get_proxy_address(&target) {
+                                    info!("Using existing proxy at {}", proxy_addr);
+                                    proxy_addr
+                                } else {
+                                    info!("Spawning proxy for tool {}", target);
+                                    match state.spawn_proxy(&target, &info.data_listen_address) {
+                                        Ok(proxy_addr) => {
+                                            info!("✓ Proxy ready at {}", proxy_addr);
+                                            proxy_addr
+                                        }
+                                        Err(e) => {
+                                            error!("Failed to spawn proxy: {}", e);
+                                            // Fall back to direct address
+                                            warn!("Falling back to direct connection");
+                                            info.data_listen_address.clone()
+                                        }
+                                    }
+                                };
+
                                 Some(ControlMessage::SubscribeAck {
-                                    data_connect_address: info.data_listen_address,
+                                    data_connect_address: data_address,
                                     capabilities: info.capabilities,
                                 })
                             }
