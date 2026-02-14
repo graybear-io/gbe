@@ -110,12 +110,24 @@ impl RouterState {
         let mut conns = self.connections.lock().unwrap();
         conns.remove(tool_id);
 
-        // Clean up subscriptions
+        // Clean up subscriptions where this tool was a subscriber
         let mut subs = self.subscriptions.lock().unwrap();
         subs.retain(|_, subscribers| {
             subscribers.retain(|sub| sub != tool_id);
             !subscribers.is_empty()
         });
+
+        // If this tool was a source being subscribed to, remove its subscriptions
+        // This prevents new subscriptions to a dead tool
+        subs.remove(tool_id);
+
+        // Clean up associated proxy if it exists
+        let mut proxies = self.proxies.lock().unwrap();
+        if let Some(proxy_info) = proxies.remove(tool_id) {
+            debug!("Cleaning up proxy for disconnected tool {}", tool_id);
+            // Proxy process will detect upstream closure and exit on its own
+            drop(proxy_info);
+        }
     }
 
     /// Get connection info for a tool
