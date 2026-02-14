@@ -7,7 +7,7 @@ use gbe_protocol::ControlMessage;
 use test_harness::TestEnv;
 
 #[test]
-#[ignore] // Requires router binary
+#[ignore] // Requires pre-built binaries; runs in CI via `just test`
 fn test_connect_and_disconnect() -> Result<()> {
     let mut env = TestEnv::new()?;
     env.start_router()?;
@@ -37,7 +37,7 @@ fn test_connect_and_disconnect() -> Result<()> {
 }
 
 #[test]
-#[ignore] // Requires router binary
+#[ignore] // Requires pre-built binaries; runs in CI via `just test`
 fn test_subscribe_to_tool() -> Result<()> {
     let mut env = TestEnv::new()?;
     env.start_router()?;
@@ -81,7 +81,7 @@ fn test_subscribe_to_tool() -> Result<()> {
 }
 
 #[test]
-#[ignore] // Requires router binary
+#[ignore] // Requires pre-built binaries; runs in CI via `just test`
 fn test_subscribe_to_unknown_tool() -> Result<()> {
     let mut env = TestEnv::new()?;
     env.start_router()?;
@@ -111,7 +111,7 @@ fn test_subscribe_to_unknown_tool() -> Result<()> {
 }
 
 #[test]
-#[ignore] // Requires router binary
+#[ignore] // Requires pre-built binaries; runs in CI via `just test`
 fn test_query_capabilities() -> Result<()> {
     let mut env = TestEnv::new()?;
     env.start_router()?;

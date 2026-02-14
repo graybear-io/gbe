@@ -210,7 +210,7 @@ impl RouterConnection {
 }
 
 #[test]
-#[ignore] // Run with: cargo test --test e2e_full_stack -- --ignored --nocapture
+#[ignore] // Requires pre-built binaries; runs in CI via `just test`
 fn test_full_stack_integration() -> Result<()> {
     println!("\n=== GBE Full Stack E2E Test ===\n");
 

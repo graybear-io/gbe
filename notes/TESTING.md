@@ -89,6 +89,7 @@ env.start_adapter("seq 1 10")?;
 - **Scope**: Single function/module logic
 - **Dependencies**: None (pure functions, mocked I/O)
 - **Run**: `cargo test --workspace --lib`
+- **In CI**: Always runs
 
 ### Integration Tests
 - **Location**: `tests/*.rs` in each package
@@ -96,6 +97,8 @@ env.start_adapter("seq 1 10")?;
 - **Dependencies**: Pre-built binaries from `target/debug/`
 - **Run**: `cargo test --workspace --test '*'`
 - **Harness**: Uses `test_harness.rs` for process management
+- **Note**: Marked with `#[ignore]` to skip during quick dev cycles
+- **In CI**: Runs via `cargo test -- --ignored`
 
 ### E2E Tests
 - **Location**: `router/tests/e2e_*.rs` (orchestration tests)
@@ -103,6 +106,20 @@ env.start_adapter("seq 1 10")?;
 - **Dependencies**: All binaries, real commands (seq, grep, etc.)
 - **Run**: `cargo test --workspace -- --ignored`
 - **Harness**: Uses `test_harness.rs` + shell commands
+- **Note**: Marked with `#[ignore]` to skip during quick dev cycles
+- **In CI**: Runs via `cargo test -- --ignored`
+
+### Why Are Tests Ignored?
+
+Integration and E2E tests are marked with `#[ignore]` because they:
+- Require pre-built binaries (slower than unit tests)
+- Spawn real processes (more overhead)
+- Are best for validation, not rapid iteration
+
+This pattern allows:
+- **Fast dev cycle**: `cargo test` runs only unit tests (~0.01s)
+- **Full validation**: `just test` or CI runs all tests including ignored ones
+- **Selective testing**: `just test-e2e` runs only E2E tests when needed
 
 ## Test Execution
 
@@ -119,6 +136,12 @@ just build-bins     # Pre-build all binaries
 just test           # Run all tests with pre-built bins
 just lint           # Clippy + fmt
 ```
+
+**CI behavior:**
+- Runs ALL tests including those marked `#[ignore]`
+- The `just test` command explicitly runs `cargo test -- --ignored`
+- This ensures integration and E2E tests validate every commit
+- Pre-building binaries prevents compilation timeouts during tests
 
 **Key insight**: `build-bins` eliminates compilation during test execution, fixing timeout issues.
 
