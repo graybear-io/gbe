@@ -246,6 +246,8 @@ fn test_multi_client_proxy() -> Result<()> {
         "adapter",
         &adapter_bin,
         &[
+            "--router",
+            &socket_path,
             "sh",
             "-c",
             "for i in $(seq 1 100); do echo $i; sleep 0.01; done",
@@ -359,7 +361,11 @@ fn test_subscribe_to_dead_tool() -> Result<()> {
     wait_for_router(&socket_path)?;
 
     // Start adapter with a short-lived command
-    let adapter = TestProcess::start("adapter", &adapter_bin, &["sh", "-c", "echo done"])?;
+    let adapter = TestProcess::start(
+        "adapter",
+        &adapter_bin,
+        &["--router", &socket_path, "sh", "-c", "echo done"],
+    )?;
     thread::sleep(Duration::from_millis(500));
     println!("✓ Adapter started (PID: {})", adapter.child.id());
 
