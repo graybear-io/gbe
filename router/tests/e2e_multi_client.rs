@@ -63,24 +63,11 @@ fn wait_for_router(socket_path: &str) -> Result<()> {
     anyhow::bail!("Router socket not created after 5s")
 }
 
-fn discover_adapter_id() -> Result<String> {
-    println!("Discovering adapter ToolId...");
-    thread::sleep(Duration::from_millis(500));
-
-    let output = Command::new("pgrep").args(["-f", "gbe-router"]).output()?;
-
-    if output.status.success() {
-        let pid_str = String::from_utf8_lossy(&output.stdout);
-        if let Some(pid_line) = pid_str.lines().next() {
-            if let Ok(pid) = pid_line.trim().parse::<u32>() {
-                let tool_id = format!("{}-001", pid);
-                println!("✓ Adapter ToolId: {}", tool_id);
-                return Ok(tool_id);
-            }
-        }
-    }
-
-    anyhow::bail!("Could not discover adapter ToolId")
+fn get_adapter_id(router_pid: u32) -> String {
+    // Adapter ToolId is always {router_pid}-001 (first tool to connect)
+    let tool_id = format!("{}-001", router_pid);
+    println!("✓ Adapter ToolId: {}", tool_id);
+    tool_id
 }
 
 struct RouterConnection {
@@ -237,7 +224,8 @@ fn test_multi_client_proxy() -> Result<()> {
 
     // Start router with unique socket
     let router = TestProcess::start("router", &router_bin, &["--socket", &socket_path])?;
-    println!("Router started (PID: {})", router.child.id());
+    let router_pid = router.child.id();
+    println!("Router started (PID: {})", router_pid);
     wait_for_router(&socket_path)?;
 
     // Start adapter with a longer-running command (100 lines with delay)
@@ -256,8 +244,8 @@ fn test_multi_client_proxy() -> Result<()> {
     thread::sleep(Duration::from_millis(500));
     println!("✓ Adapter started (PID: {})", adapter.child.id());
 
-    // Discover adapter ToolId
-    let adapter_id = discover_adapter_id()?;
+    // Get adapter ToolId from router PID
+    let adapter_id = get_adapter_id(router_pid);
 
     // Connect BOTH clients BEFORE reading (while adapter is alive)
     // This tests the real-world scenario: multiple viewers of a running tool
@@ -357,7 +345,8 @@ fn test_subscribe_to_dead_tool() -> Result<()> {
 
     // Start router with unique socket
     let router = TestProcess::start("router", &router_bin, &["--socket", &socket_path])?;
-    println!("Router started (PID: {})", router.child.id());
+    let router_pid = router.child.id();
+    println!("Router started (PID: {})", router_pid);
     wait_for_router(&socket_path)?;
 
     // Start adapter with a short-lived command
@@ -369,9 +358,8 @@ fn test_subscribe_to_dead_tool() -> Result<()> {
     thread::sleep(Duration::from_millis(500));
     println!("✓ Adapter started (PID: {})", adapter.child.id());
 
-    // Discover adapter ToolId
-    let adapter_id = discover_adapter_id()?;
-    println!("Adapter ToolId: {}", adapter_id);
+    // Get adapter ToolId from router PID
+    let adapter_id = get_adapter_id(router_pid);
 
     // Wait for adapter to complete and disconnect
     println!("\nWaiting for adapter to complete...");
