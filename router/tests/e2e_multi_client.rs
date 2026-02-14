@@ -351,11 +351,7 @@ fn test_subscribe_to_dead_tool() -> Result<()> {
     wait_for_router()?;
 
     // Start adapter with a short-lived command
-    let adapter = TestProcess::start(
-        "adapter",
-        &adapter_bin,
-        &["sh", "-c", "echo done"],
-    )?;
+    let adapter = TestProcess::start("adapter", &adapter_bin, &["sh", "-c", "echo done"])?;
     thread::sleep(Duration::from_millis(500));
     println!("✓ Adapter started (PID: {})", adapter.child.id());
 
@@ -384,9 +380,7 @@ fn test_subscribe_to_dead_tool() -> Result<()> {
             }
         }
         Ok(_) => {
-            anyhow::bail!(
-                "Expected subscription to fail for dead tool, but it succeeded"
-            );
+            anyhow::bail!("Expected subscription to fail for dead tool, but it succeeded");
         }
     }
 

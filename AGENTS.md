@@ -11,6 +11,36 @@ Hooks auto-inject this at session start when `.beads/` is detected.
 
 See [CI.md](CI.md) for CircleCI configuration and project identifiers.
 
+## Before Every Commit (MANDATORY)
+
+**Quality gates MUST run before every commit, not just at session end.**
+
+```bash
+# 1. Format code
+cargo fmt
+
+# 2. Check linting
+cargo clippy --workspace
+
+# 3. Run tests
+cargo test --workspace
+
+# 4. ONLY THEN commit
+git add <files>
+git commit -m "message"
+```
+
+**NO EXCEPTIONS** - Even for "small" changes or documentation.
+
+**Why this matters:**
+- CI will fail if quality gates fail
+- Fixing after push wastes time and creates noise
+- Pre-commit hook enforces this (see below)
+
+**Use `/commit` skill for guided workflow** (runs checks automatically)
+
+**See:** [docs/COMMIT_WORKFLOW.md](docs/COMMIT_WORKFLOW.md) for detailed workflow
+
 ## Quick Reference
 
 ```bash
