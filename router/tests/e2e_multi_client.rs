@@ -251,14 +251,11 @@ fn test_multi_client_proxy() -> Result<()> {
     // Discover adapter ToolId
     let adapter_id = discover_adapter_id()?;
 
-    // Connect first client
+    // Connect BOTH clients BEFORE reading (while adapter is alive)
+    // This tests the real-world scenario: multiple viewers of a running tool
+    println!("\n--- Connecting both clients (parallel subscription) ---");
+
     let (_router_conn1, data_stream1) = connect_client("Client1", &adapter_id)?;
-
-    // Give a moment for first client to be fully connected
-    thread::sleep(Duration::from_millis(200));
-
-    // Connect second client - this should trigger proxy creation
-    println!("\n--- Connecting second client (should trigger proxy) ---");
     let (_router_conn2, data_stream2) = connect_client("Client2", &adapter_id)?;
 
     // Check if proxy was spawned
@@ -272,7 +269,8 @@ fn test_multi_client_proxy() -> Result<()> {
         println!("   Note: Router may use direct routing for 2 clients in Phase 1");
     }
 
-    // Read data from both clients concurrently
+    // NOW start reading from both clients concurrently
+    // Both clients are subscribed to the LIVE adapter
     // Read first 10 lines to verify they both get the same data
     println!("\n--- Reading data from both clients ---");
 
@@ -326,6 +324,73 @@ fn test_multi_client_proxy() -> Result<()> {
     println!("✓ Both clients received identical correct data");
 
     println!("\n=== ✓ Multi-Client Test Passed ===\n");
+
+    Ok(())
+}
+
+#[test]
+#[ignore] // Requires pre-built binaries; runs in CI via `just test`
+fn test_subscribe_to_dead_tool() -> Result<()> {
+    println!("\n=== GBE Subscribe to Dead Tool Test ===\n");
+
+    // Clean up any old sockets
+    let _ = std::fs::remove_file("/tmp/gbe-router.sock");
+
+    // Get pre-built binary paths
+    let router_bin = std::env::var("CARGO_BIN_EXE_gbe-router")
+        .unwrap_or_else(|_| "../target/debug/gbe-router".to_string());
+    let adapter_bin = std::env::var("CARGO_BIN_EXE_gbe-adapter")
+        .unwrap_or_else(|_| "../target/debug/gbe-adapter".to_string());
+
+    println!("Using router binary: {}", router_bin);
+    println!("Using adapter binary: {}", adapter_bin);
+
+    // Start router
+    let router = TestProcess::start("router", &router_bin, &[])?;
+    println!("Router started (PID: {})", router.child.id());
+    wait_for_router()?;
+
+    // Start adapter with a short-lived command
+    let adapter = TestProcess::start(
+        "adapter",
+        &adapter_bin,
+        &["sh", "-c", "echo done"],
+    )?;
+    thread::sleep(Duration::from_millis(500));
+    println!("✓ Adapter started (PID: {})", adapter.child.id());
+
+    // Discover adapter ToolId
+    let adapter_id = discover_adapter_id()?;
+    println!("Adapter ToolId: {}", adapter_id);
+
+    // Wait for adapter to complete and disconnect
+    println!("\nWaiting for adapter to complete...");
+    thread::sleep(Duration::from_secs(2));
+    println!("✓ Adapter should have exited by now");
+
+    // Try to subscribe to the dead tool
+    println!("\n--- Attempting to subscribe to dead tool ---");
+
+    let result = connect_client("Client", &adapter_id);
+
+    match result {
+        Err(e) => {
+            let err_msg = e.to_string();
+            if err_msg.contains("NOT_FOUND") || err_msg.contains("not found") {
+                println!("✓ Expected error: {}", err_msg);
+                println!("✓ Router correctly rejects subscription to dead tool");
+            } else {
+                anyhow::bail!("Unexpected error: {}", err_msg);
+            }
+        }
+        Ok(_) => {
+            anyhow::bail!(
+                "Expected subscription to fail for dead tool, but it succeeded"
+            );
+        }
+    }
+
+    println!("\n=== ✓ Subscribe to Dead Tool Test Passed ===\n");
 
     Ok(())
 }

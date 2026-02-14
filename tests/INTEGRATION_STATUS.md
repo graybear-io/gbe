@@ -60,7 +60,9 @@
 - ⚠️ Backpressure monitoring (logged, not acted on yet)
 - ✅ Subscriber disconnect handling
 
-**Test:** `router/tests/e2e_multi_client.rs` - PASSING
+**Tests:**
+- `router/tests/e2e_multi_client.rs::test_multi_client_proxy` - Validates concurrent subscribers
+- `router/tests/e2e_multi_client.rs::test_subscribe_to_dead_tool` - Validates error handling
 
 ---
 

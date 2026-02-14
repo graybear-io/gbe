@@ -7,6 +7,10 @@ We use **bd (beads)** for issue and task tracking.
 **Get full workflow context:** Run `bd prime` for dynamic, up-to-date workflow instructions (~80 lines).
 Hooks auto-inject this at session start when `.beads/` is detected.
 
+## CI/CD Integration
+
+See [CI.md](CI.md) for CircleCI configuration and project identifiers.
+
 ## Quick Reference
 
 ```bash

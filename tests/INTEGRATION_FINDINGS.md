@@ -98,7 +98,11 @@ ERROR Failed to write stdout frame: Broken pipe
 - Can optimize to direct-connect for single subscriber in Phase 2
 
 **Testing:**
-- ✅ `e2e_multi_client.rs` - PASSING (both clients receive data)
+- ✅ `test_multi_client_proxy` - PASSING (both clients receive data)
+  - Fixed: Both clients now subscribe BEFORE reading (parallel subscription)
+  - Tests real-world usage: multiple viewers of a running tool
+- ✅ `test_subscribe_to_dead_tool` - NEW test for edge case
+  - Validates expected failure when subscribing to disconnected tool
 - ✅ `e2e_full_stack.rs` - PASSING (single client via proxy)
 
 ---
