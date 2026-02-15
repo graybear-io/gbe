@@ -9,6 +9,7 @@ KV carries state. Referenced by task orchestration, watcher, and archiver.
 ## Why Separate from Transport
 
 The transport moves messages. The KV store answers questions:
+
 - "What state is job X in?"
 - "Which jobs have been stuck for > 5 minutes?"
 - "What's the last known step for this task?"
@@ -36,7 +37,7 @@ the "transport is a dumb pipe" principle.
 
 ## Core Interface
 
-```
+```rust
 interface StateStore {
     # Lifecycle
     connect(config: StateStoreConfig) -> StateStore
@@ -65,7 +66,7 @@ interface StateStore {
 
 ### Record
 
-```
+```rust
 Record {
     fields  : map<string, bytes>    # arbitrary field/value pairs
     ttl     : duration?             # remaining TTL (if set)
@@ -74,7 +75,7 @@ Record {
 
 ### ScanFilter
 
-```
+```rust
 ScanFilter {
     field       : string            # filter on this field
     op          : "eq" | "lt" | "gt"
@@ -95,7 +96,7 @@ signal to use a database instead.
 
 Same dot-delimited convention as transport subjects, `:` delimited for Redis.
 
-```
+```rust
 gbe.state.tasks.{task_type}.{task_id}
 ```
 
@@ -103,7 +104,7 @@ Redis key: `gbe:state:tasks:email-send:job_abc123`
 
 ### Task State Record Fields
 
-```
+```rust
 Fields for a task state record:
 
     state       : string        # "pending" | "claimed" | "running" | "completed" | "failed" | "cancelled"
@@ -126,6 +127,7 @@ where `updated_at < now - threshold` and `state` is not terminal."
 ### Why Fields, Not a Single Blob
 
 Multiple fields allow:
+
 - `set_field("state", "running")` without reading the whole record
 - `compare_and_swap("state", "pending", "claimed")` for safe worker claim
 - Watcher reads only `state` + `updated_at` without deserializing params
@@ -139,7 +141,8 @@ between concurrent updaters.
 ## Key Operations by Consumer
 
 ### Worker claiming a job
-```
+
+```rust
 # Atomic: only one worker wins
 success = store.compare_and_swap(
     key:      "gbe.state.tasks.email-send.job_123",
@@ -156,7 +159,8 @@ if success:
 ```
 
 ### Step completion
-```
+
+```rust
 store.set_fields("gbe.state.tasks.email-send.job_123", {
     "state":        "running",
     "current_step": step + 1,
@@ -168,7 +172,8 @@ transport.publish("gbe.tasks.email-send.progress", step_event)
 ```
 
 ### Job completion
-```
+
+```rust
 store.set_fields("gbe.state.tasks.email-send.job_123", {
     "state":      "completed",
     "updated_at": now(),
@@ -180,7 +185,8 @@ transport.publish("gbe.tasks.email-send.terminal", complete_event)
 ```
 
 ### Watcher scan
-```
+
+```rust
 for (key, record) in store.scan("gbe.state.tasks.", filter: {
     field: "updated_at",
     op: "lt",
@@ -197,7 +203,7 @@ for (key, record) in store.scan("gbe.state.tasks.", filter: {
 ## Redis Implementation Notes
 
 | StateStore concept | Redis implementation |
-|---|---|
+| --- | --- |
 | `get` | `HGETALL {key}` |
 | `put` | `HSET {key} {f1} {v1} ...` + `PEXPIRE {key} {ttl}` |
 | `delete` | `DEL {key}` |
@@ -209,6 +215,7 @@ for (key, record) in store.scan("gbe.state.tasks.", filter: {
 | `ttl` | `PEXPIRE` / `PERSIST` |
 
 ### CAS Lua Script
+
 ```lua
 -- compare_and_swap.lua
 local current = redis.call('HGET', KEYS[1], ARGV[1])
@@ -225,6 +232,7 @@ end
 `SCAN` + per-key `HGET` is O(N) and doesn't scale elegantly. For the
 watcher this is acceptable — it runs periodically (every 30-60s), not on
 the hot path. If task volume grows to where scan is too slow:
+
 - Add a secondary index: a sorted set `gbe:idx:tasks:by_updated` scored
   by `updated_at`, queried with `ZRANGEBYSCORE`.
 - Or move watcher queries to a database.
@@ -236,7 +244,7 @@ Start without the index. Add it when scan takes > 1s.
 ## NATS KV Implementation Notes
 
 | StateStore concept | NATS KV implementation |
-|---|---|
+| --- | --- |
 | `get` | `kv.Get(key)` — returns single value (not fields) |
 | `put` | `kv.Put(key, value)` |
 | `delete` | `kv.Delete(key)` |
@@ -245,6 +253,7 @@ Start without the index. Add it when scan takes > 1s.
 | `ttl` | Bucket-level TTL only (not per-key) |
 
 ### Limitations vs Redis
+
 - NATS KV stores opaque values, not hashes — field-level ops require
   serialize/deserialize the whole record.
 - TTL is per-bucket, not per-key — would need separate buckets for

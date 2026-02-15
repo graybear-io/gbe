@@ -13,7 +13,7 @@
 
 ## Architecture Decision: Layered Approach
 
-```
+```text
 ┌─────────────────────────────────┐
 │  Task System (our code)         │  ← state machines, retries,
 │  - job lifecycle                │    step sequencing, timeouts
@@ -31,21 +31,24 @@
 **Key principle**: Transport handles **delivery**. Task layer handles **semantics**.
 
 ### Transport Should NOT Handle
+
 - Retry logic (conflates "unacked message" with "task failed")
 - Job state (use a separate state store)
 
 ### Transport SHOULD Handle
+
 - Message routing and fan-out
 - Persistence and replay
 - Consumer groups and ack/nak
 - Backpressure
 
 ### Task State Pattern
+
 - State lives in KV store (NATS KV or Redis hash)
 - Messages are just signals between steps
 - Sweeper process re-publishes stuck jobs from state store
 
-```
+```text
 Job submitted → publish to `tasks.{type}.pending`
 Worker picks up → ack message, set state to "running"
 Step completes → publish to `tasks.{type}.step.{n}.complete`
@@ -59,16 +62,19 @@ Timeout? → Sweeper reads state store, re-publishes stuck jobs
 ## Broker Comparison
 
 ### Evaluated and Rejected
+
 - **Apache Kafka** — operationally heavy, overkill for our scale, strong human preference against it
 - **Temporal** — good for task orchestration only, doesn't solve notifications or observability
 
 ### Current: AWS MemoryDB (Redis-compatible)
+
 - Already in use for pub/sub
 - Redis Streams available for consumer groups + persistence
 - **Limitation**: basic pub/sub loses messages if no subscriber is connected
 - **Redis Streams**: adds durability, consumer groups, ack — addresses the gap
 
 ### Candidate: NATS JetStream
+
 - Single Go binary, trivial to deploy
 - Three primitives: Core NATS (fire-and-forget pub/sub), JetStream (persistent streams), KV/Object Store
 - Subject hierarchy with wildcards: `notifications.customer.>`, `events.observability.api.latency`
@@ -81,12 +87,14 @@ Timeout? → Sweeper reads state store, re-publishes stuck jobs
   - No external database required
 
 ### RabbitMQ
+
 - Mature, flexible routing (exchanges/bindings)
 - Good for task queues
 - Not ideal for high-throughput event streaming
 - More operational complexity than NATS
 
 ### Redis Streams (via MemoryDB)
+
 - Already available — no new infrastructure
 - Consumer groups with acknowledgment
 - Persistence handled by MemoryDB (Multi-AZ replication)
@@ -131,19 +139,22 @@ Timeout? → Sweeper reads state store, re-publishes stuck jobs
 ## Decisions
 
 ### Terminology
+
 - **Domain**: the top-level schema category — `notify`, `events`, `tasks`
 - Each domain defines its own schema contract
 - Transport carries an **envelope** (routing metadata); the **payload** conforms to the domain schema
 - Transport never inspects the payload; schema validation is producer/consumer responsibility
 
 ### Customer Notifications (Q2)
+
 - < 10k customers — per-customer streams are fine, no hash-bucketing needed
 - ntfy usage is internal devops, not customer-facing
 - Simplifies the notify domain: `gbe.notify.topic.*` is the primary path
 
 ### Event Retention (Q3)
+
 | Domain | TTL | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `notify.topic.*` | 72h | Internal devops, short-lived |
 | `notify.broadcast.*` | 7d | Maintenance notices |
 | `events.system.*` | 7d | Incident debugging window |
@@ -153,30 +164,35 @@ Timeout? → Sweeper reads state store, re-publishes stuck jobs
 | `tasks.*` | 24h | State lives in KV; stream is just signals |
 
 **Archive watcher pattern**:
+
 - Sweeper consumes from streams, knows per-domain retention policy
 - Ephemeral domains: drop after TTL (XTRIM)
 - Audit domain: flush to cold storage (S3 + Athena or Postgres), then trim stream
 - Sweeper confirms successful archive before trimming
 
 ### Schemas (Q4)
+
 - **No schema registry service** — shared type definitions in code
 - Languages: Rust, Go, Python (no JavaScript)
 - Schema definitions in a structured format (protobuf, JSON Schema, or language-native structs)
 - Shared schema package per language, strict contracts for producers and consumers
 - **Transport envelope / payload separation**:
-  ```
+
+```text
   ┌─ Transport Envelope ──────────────┐
   │  subject/stream, timestamp, id    │  ← transport routes on this
   │  ┌─ Payload (domain schema) ────┐ │
   │  │  domain-specific fields      │ │  ← producers/consumers validate this
   │  └──────────────────────────────┘ │
   └────────────────────────────────────┘
-  ```
+```
+
 - **Evolution rules**: add fields freely, never change field types, deprecate before removing
 - **Validation**: at producer (before publish) and consumer (after receive)
 - **Dead-letter stream**: malformed messages go to `gbe._deadletter.{domain}` for debugging
 
 ### Task Stream Granularity (Q1)
+
 **Resolved**: Option C — hybrid split by consumer role. 3 streams per task type: `queue` (workers), `progress` (orchestrator), `terminal` (monitors). 50 task types × 3 = ~150 streams. Peak 10k msgs/min on hot types. Config-driven onboarding. See [subject-hierarchy.md](./subject-hierarchy.md) for full details.
 
 ---

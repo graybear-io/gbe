@@ -27,7 +27,7 @@ Must support Rust, Go, and Python implementations.
 Every message on the wire has the same outer structure. The transport
 creates/reads the envelope. Domain code only sees the payload.
 
-```
+```rust
 Envelope {
     message_id  : string        # unique, transport-generated (ULID or equivalent)
     subject     : string        # e.g. "gbe.tasks.email-send.queue"
@@ -41,6 +41,7 @@ Envelope {
 Four fields plus payload. The transport is a dumb pipe.
 
 **Removed fields and why**:
+
 - ~~`domain`~~ — derivable from `subject` second token. Single source of truth.
 - ~~`reply_to`~~ — request/reply is a non-goal. Add later if needed.
 - ~~`schema_ver`~~ — payload concern, not transport concern. Lives in the
@@ -50,15 +51,18 @@ Four fields plus payload. The transport is a dumb pipe.
   producer and consumer. Domain schemas define their own serialization.
 
 ### What the transport touches
+
 - `message_id`: generated on publish
 - `subject`: used for routing
 - `timestamp`: set on publish
 
 ### What the transport ignores
+
 - `payload`: opaque bytes, passed through untouched
 - `trace_id`: passed through for observability propagation
 
 ### Wire format
+
 The envelope itself is serialized as JSON (human-readable, debuggable).
 The payload within it is opaque bytes — could be JSON, protobuf, msgpack,
 or anything. The domain schema dictates serialization, not the transport.
@@ -68,11 +72,12 @@ or anything. The domain schema dictates serialization, not the transport.
 ## Payload Size and the Claim Check Pattern
 
 ### Transport payload limit
+
 The transport enforces a `max_payload_size` (configured in `TransportConfig`,
 default 1MB). Publishes exceeding this are rejected immediately — fail fast
 rather than discovering broker limits at runtime.
 
-```
+```rust
 TransportConfig {
     ...
     max_payload_size: 1_048_576   # 1MB default, matches NATS default
@@ -83,11 +88,12 @@ This is a **safety rail**, not a feature. The transport doesn't know *why*
 a message is too big — it just prevents accidents.
 
 ### Claim check pattern (producer responsibility)
+
 When a producer has data too large for a message (binary artifacts, large
 reports, etc.), the producer stores the data in object storage and publishes
 a reference:
 
-```
+```text
 Producer                        Object Store (S3)           Transport
    |                                |                          |
    |  PUT large binary              |                          |
@@ -108,7 +114,7 @@ Consumer fetches the referenced data from storage as needed.
 ### Where this is decided
 
 | Concern | Owner |
-|---|---|
+| --- | --- |
 | "Is this too big for a message?" | Producer |
 | "Store binary elsewhere, publish reference" | Producer |
 | "Reject oversized publishes" | Transport (safety rail) |
@@ -126,7 +132,7 @@ to idiomatic patterns (traits, interfaces, protocols).
 
 The top-level handle. Created once, shared across the application.
 
-```
+```rust
 interface Transport {
     # Lifecycle
     connect(config: TransportConfig) -> Transport
@@ -148,7 +154,7 @@ interface Transport {
 
 ### Message (what the handler receives)
 
-```
+```rust
 interface Message {
     envelope    : Envelope      # full envelope including metadata
     payload     : bytes         # raw payload bytes
@@ -161,7 +167,7 @@ interface Message {
 
 ### MessageHandler
 
-```
+```rust
 callback MessageHandler(msg: Message) -> Result<void, Error>
 ```
 
@@ -170,7 +176,7 @@ transport calls `nak()` automatically.
 
 ### Subscription
 
-```
+```rust
 interface Subscription {
     unsubscribe()
     is_active() -> bool
@@ -181,7 +187,7 @@ interface Subscription {
 
 ## Publish Flow
 
-```
+```text
 caller                          transport                       wire
   |                                |                              |
   |  publish(subject, payload)     |                              |
@@ -198,7 +204,7 @@ caller                          transport                       wire
 
 ### PublishOpts
 
-```
+```rust
 PublishOpts {
     trace_id        : string?   # propagate from caller context
     idempotency_key : string?   # deduplicate on transport side if supported
@@ -213,7 +219,7 @@ the domain publisher's concern, encoded within the payload bytes.
 
 ## Subscribe Flow
 
-```
+```text
 caller                          transport                       wire
   |                                |                              |
   |  subscribe(subj, group, fn)   |                              |
@@ -234,7 +240,7 @@ caller                          transport                       wire
 
 ### SubscribeOpts
 
-```
+```rust
 SubscribeOpts {
     batch_size  : uint32        # max messages per read (default 10)
     max_inflight: uint32        # max unacked messages (backpressure)
@@ -251,7 +257,7 @@ Streams must exist before subscribe (auto-created on publish for Redis,
 pre-configured for NATS). `ensure_stream` is idempotent — safe to call
 on every startup.
 
-```
+```rust
 StreamConfig {
     subject     : string        # stream subject/key pattern
     max_age     : duration      # retention TTL (e.g. 72h, 7d)
@@ -305,11 +311,12 @@ streams:
 When a consumer can't process a message (schema mismatch, corrupt payload,
 repeated handler failures):
 
-```
+```rust
 msg.dead_letter(reason: "schema validation failed: missing field task_id")
 ```
 
 This:
+
 1. Publishes the original envelope + reason to `gbe._deadletter.{domain}`
 2. Acks the original message (removes it from the source stream)
 3. Dead-letter stream has its own retention (7d default)
@@ -325,7 +332,7 @@ Raw `transport.publish()` is low-level. Each domain provides a typed
 publisher that knows its subject patterns, schema version, and serialization.
 The transport just sees `publish(subject, bytes)`.
 
-```
+```rust
 # Tasks domain publisher
 struct TaskPublisher {
     transport: Transport
@@ -371,7 +378,7 @@ Same pattern for `NotifyPublisher` and `EventsPublisher`.
 ### Mapping
 
 | Transport concept | Redis implementation |
-|---|---|
+| --- | --- |
 | `subject` | stream key (`:` delimited: `gbe:tasks:email-send:queue`) |
 | `publish` | `XADD {stream} * {field} {value} ...` |
 | `subscribe` | `XREADGROUP GROUP {group} {consumer} BLOCK {ms} COUNT {n} STREAMS {stream} >` |
@@ -396,10 +403,10 @@ Same pattern for `NotifyPublisher` and `EventsPublisher`.
 
 ## NATS JetStream Implementation Notes
 
-### Mapping
+### Mapping to NATS
 
 | Transport concept | NATS implementation |
-|---|---|
+| --- | --- |
 | `subject` | NATS subject (`.` delimited, native) |
 | `publish` | `js.Publish(subject, data)` |
 | `subscribe` | `js.QueueSubscribe(subject, group, handler)` |
@@ -434,7 +441,9 @@ Same pattern for `NotifyPublisher` and `EventsPublisher`.
 ## Testing
 
 ### Interface compliance tests
+
 Write transport-agnostic tests against the `Transport` interface:
+
 - publish → subscribe → ack roundtrip
 - nak → redelivery
 - dead_letter → appears in dead-letter stream
@@ -445,6 +454,7 @@ Run the same test suite against both Redis and NATS implementations.
 This is the contract that guarantees swappability.
 
 ### In-memory transport for unit tests
+
 Implement a minimal in-memory `Transport` for domain logic unit tests.
 No Redis/NATS needed. Just a map of subjects → queues with ack tracking.
 
@@ -452,7 +462,7 @@ No Redis/NATS needed. Just a map of subjects → queues with ack tracking.
 
 ## File/Package Structure (proposed)
 
-```
+```text
 transport/
 ├── interface.go / mod.rs / __init__.py   # Transport trait/interface
 ├── envelope.go / mod.rs / envelope.py    # Envelope struct + serialization

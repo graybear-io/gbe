@@ -8,7 +8,7 @@ the health of the transport and state layers.
 
 ## Two Processes, Two Jobs
 
-```
+```text
 Watcher:  "is anything stuck or expired?"   → acts on live state
 Archiver: "does anything need cold storage?" → acts on stream data
 ```
@@ -22,6 +22,7 @@ the same service — deployment is an implementation detail.
 ## Watcher
 
 ### Purpose
+
 Detect stuck/expired jobs and enforce stream retention on Redis
 (NATS handles retention natively).
 
@@ -33,13 +34,14 @@ Detect stuck/expired jobs and enforce stream retention on Redis
    consumers and stale pending messages
 
 ### Run Cadence
+
 - Every 30-60 seconds (configurable)
 - Single instance per deployment (use a distributed lock if running
   multiple replicas)
 
 ### Stuck Job Flow
 
-```
+```text
 watcher                         state store              transport
   |                                |                        |
   | scan("gbe.state.tasks.",      |                        |
@@ -67,12 +69,13 @@ watcher                         state store              transport
 
 The watcher shouldn't retry forever. Each job state record tracks retries:
 
-```
+```rust
 retry_count : uint          # incremented by watcher each time
 max_retries : uint          # from task type config (default 3)
 ```
 
 When `retry_count >= max_retries`:
+
 - Set state to `"failed"`
 - Publish to `*.terminal` stream
 - Publish to `gbe.events.system.error` for alerting
@@ -82,7 +85,7 @@ When `retry_count >= max_retries`:
 
 For each configured stream, trim based on `max_age`:
 
-```
+```rust
 for stream in configured_streams:
     min_id = timestamp_to_redis_id(now() - stream.max_age)
     XTRIM {stream} MINID ~ {min_id}
@@ -97,7 +100,7 @@ about the boundary). Close enough for retention.
 
 If multiple replicas are running, only one watcher should be active.
 
-```
+```rust
 # Redis implementation
 acquired = SET gbe:lock:watcher {instance_id} NX PX 60000
 if acquired:
@@ -113,11 +116,10 @@ prevents double-claiming.
 
 ## Archiver
 
-### Purpose
 Drain data from streams to cold storage before the watcher trims it.
 Only operates on domains with archival requirements (currently: audit).
 
-### Responsibilities
+### Archiver's Responsibilities
 
 1. **Consume from archival streams** as a consumer group member
 2. **Batch and write to cold storage** (S3, Postgres, etc.)
@@ -145,7 +147,7 @@ archival:
 
 ### Archive Flow
 
-```
+```text
 archiver                        transport              cold storage (S3)
   |                                |                        |
   | subscribe("gbe.events.audit.*",                        |
@@ -172,17 +174,19 @@ archiver                        transport              cold storage (S3)
 
 ### S3 Key Structure
 
-```
+```text
 s3://{bucket}/archive/{domain}/{YYYY}/{MM}/{DD}/{batch_id}.jsonl.gz
 ```
 
 Example:
-```
+
+```text
 s3://gbe-archive/archive/audit/2026/02/14/batch_001.jsonl.gz
 s3://gbe-archive/archive/audit/2026/02/14/batch_002.jsonl.gz
 ```
 
 Daily partitioning enables:
+
 - Athena/Presto queries with partition pruning
 - Lifecycle policies per prefix (e.g., move to Glacier after 1 year)
 - Simple manual inspection ("what happened on Feb 14?")
@@ -207,6 +211,7 @@ consumer ack floor (NATS). Alert if lag exceeds a threshold (e.g.,
 Archive files contain messages in stream order within each batch.
 Cross-batch ordering is not guaranteed (batches may overlap during
 retries). Downstream consumers should:
+
 - Sort by `timestamp` + `message_id` if order matters
 - Deduplicate on `message_id` if retries caused duplicates
 
@@ -214,7 +219,7 @@ retries). Downstream consumers should:
 
 ## How They Relate
 
-```
+```text
                      ┌─────────────┐
                      │   Streams   │
                      │ (transport) │
@@ -254,7 +259,7 @@ retention window, no data is lost.
 trimming archival streams. If lag exceeds a threshold, skip trimming
 that stream and emit an alert.
 
-```
+```rust
 # Before trimming an archival stream
 pending = XPENDING gbe:events:audit:change archiver
 if pending.count > lag_threshold:

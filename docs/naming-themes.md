@@ -22,7 +22,7 @@ routes — together they form the governing body.
 Inspired by autonomous AI constructs guarding vast infrastructure.
 
 | Role | Component | Description |
-|---|---|---|
+| --- | --- | --- |
 | **Nexus** | Bus / transport layer | Central nervous system, message backbone |
 | **Sentinel** | Per-host VM lifecycle manager | Guards the host, enforces boundaries |
 | **Watcher** | Sweeper / archiver | Passive monitor, detects anomalies, cleans up |
@@ -42,7 +42,7 @@ A self-sustaining station where every role keeps the ship running.
 Expanse / Alien aesthetic.
 
 | Role | Component | Description |
-|---|---|---|
+| --- | --- | --- |
 | **Relay** | Bus / transport layer | Comms backbone between decks |
 | **Sentinel** | Per-host VM lifecycle manager | Station security, compartment control |
 | **Salvager** | Sweeper / archiver | Reclaims resources, scraps dead processes |
@@ -62,7 +62,7 @@ A distributed defense network protecting a perimeter.
 Horizon Zero Dawn / Mass Effect aesthetic.
 
 | Role | Component | Description |
-|---|---|---|
+| --- | --- | --- |
 | **Lattice** | Bus / transport layer | The mesh connecting all nodes |
 | **Sentinel** | Per-host VM lifecycle manager | Perimeter enforcer |
 | **Scrubber** | Sweeper / archiver | Cleans corrupted/stale state |

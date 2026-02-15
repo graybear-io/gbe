@@ -12,7 +12,7 @@ template defines the contract between producers and consumers.
 Every domain payload must include these fields. Beyond this, the domain
 defines its own structure.
 
-```
+```json
 {
     "v":  1,                    # schema version (uint)
     "ts": 1707934567000,        # event timestamp, unix millis (uint64)
@@ -23,6 +23,7 @@ defines its own structure.
 ```
 
 **Why these three**:
+
 - `v` — consumer knows how to deserialize; enables schema evolution
 - `ts` — when the event occurred (may differ from envelope timestamp
   which is when it was published)
@@ -63,14 +64,14 @@ the schema lives with the producing project.
 "gbe.billing.*": 30d
 ```
 
-```
+```yaml
 # subject hierarchy
 gbe.billing.invoice.created
 gbe.billing.invoice.paid
 gbe.billing.payment.failed
 ```
 
-```
+```json
 # payload example
 {
     "v": 1,

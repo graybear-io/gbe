@@ -17,7 +17,7 @@ For Redis, these are logical channel/stream names. For NATS, these are native su
 
 ## Hierarchy
 
-```
+```text
 gbe.                                    # root namespace
 ├── notify.                             # ── customer-facing notifications ──
 │   ├── customer.{customer_id}.>        # all notifications for a customer
@@ -61,7 +61,8 @@ gbe.                                    # root namespace
 ## Examples
 
 ### Customer Notifications
-```
+
+```text
 gbe.notify.customer.cust_abc123.alert       # urgent alert for customer abc123
 gbe.notify.customer.cust_abc123.info        # info notification
 gbe.notify.broadcast.maintenance            # maintenance notice to all
@@ -69,7 +70,8 @@ gbe.notify.topic.server-alerts              # ntfy-compatible topic
 ```
 
 ### Subscribing (NATS wildcards)
-```
+
+```text
 gbe.notify.customer.cust_abc123.>           # everything for one customer
 gbe.notify.customer.*.alert                 # all customer alerts
 gbe.notify.broadcast.>                      # all broadcasts
@@ -78,7 +80,8 @@ gbe.tasks.email-send.>                      # all email-send task events
 ```
 
 ### Observability
-```
+
+```text
 gbe.events.system.health                    # health heartbeat
 gbe.events.api.error                        # API error occurred
 gbe.events.auth.failure                     # failed login attempt
@@ -86,7 +89,8 @@ gbe.events.audit.change                     # data was mutated
 ```
 
 ### Task Orchestration
-```
+
+```text
 gbe.tasks.email-send.queue                  # worker picks up pending/claimed jobs
 gbe.tasks.email-send.progress               # orchestrator sees step events
 gbe.tasks.email-send.terminal               # monitors see completed/failed/cancelled
@@ -100,12 +104,13 @@ gbe.tasks._control.sweep                    # watcher heartbeat
 
 The ntfy API uses flat topic names (`/mytopic`). Map them into the hierarchy:
 
-```
+```text
 ntfy topic "server-alerts"  →  gbe.notify.topic.server-alerts
 ntfy topic "backups"        →  gbe.notify.topic.backups
 ```
 
 The HTTP layer translates:
+
 - `POST /server-alerts` → publish to `gbe.notify.topic.server-alerts`
 - `GET /server-alerts/json` → subscribe to `gbe.notify.topic.server-alerts`
 
@@ -117,7 +122,7 @@ This keeps ntfy API compatibility without polluting the broader namespace.
 
 If using Redis Streams instead of NATS, map subjects to stream keys:
 
-```
+```text
 NATS subject:    gbe.notify.customer.cust_abc123.alert
 Redis stream:    gbe:notify:customer:cust_abc123:alert
 
@@ -141,9 +146,10 @@ Wildcard subscriptions require application-level fan-out or pattern-based PSUBSC
 
 ## Decision: Task Stream Granularity (Q1)
 
-**Chosen: Option C — Hybrid, split by consumer role**
+**Chosen**: Option C — Hybrid, split by consumer role
 
 ### Context
+
 - Consolidating dozens of ad-hoc task/event flows into unified system
 - 30-50 task types expected
 - Peak volume: ~10k messages/min on hot task types
@@ -151,7 +157,7 @@ Wildcard subscriptions require application-level fan-out or pattern-based PSUBSC
 
 ### Stream Layout (3 streams per task type)
 
-```
+```text
 gbe.tasks.{task_type}.queue       → pending, claimed      (worker-facing)
 gbe.tasks.{task_type}.progress    → step start/complete/fail (orchestrator-facing)
 gbe.tasks.{task_type}.terminal    → completed, failed, cancelled (monitors/dashboards)
@@ -159,6 +165,7 @@ gbe.tasks._control.>              → sweep, rebalance, shutdown (system-wide)
 ```
 
 ### Scale
+
 - 50 task types × 3 streams = 150 task streams + control streams
 - MemoryDB handles this trivially (~167 ops/sec per hot stream at 10k/min)
 - Redis `XADD` auto-creates streams on first write — no pre-provisioning
@@ -166,7 +173,7 @@ gbe.tasks._control.>              → sweep, rebalance, shutdown (system-wide)
 ### Consumer Groups
 
 | Stream | Consumer Group | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `*.queue` | `{task_type}-workers` | Workers competing for jobs |
 | `*.progress` | `{task_type}-orchestrator` | Step coordinator advancing jobs |
 | `*.terminal` | `monitors` | Dashboards, alerting, watcher |
@@ -192,4 +199,5 @@ task_types:
 Adding a task type = adding a config entry. Streams and consumer groups are created on first use.
 
 ### Full Job History
+
 Streams are **signals**, not the system of record. Full job state lives in KV store (Redis hash or NATS KV), keyed by `task_id`. The watcher and any "show me job X history" queries read from KV, not from streams.
