@@ -1,0 +1,4 @@
+# Child repos (independent git histories)
+gbe-envoy/
+gbe-nexus/
+gbe-sentinel/
