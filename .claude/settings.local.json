@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(sqlite3:*)",
-      "Bash(git -C /Users/bear/projects/gbe/gbe-envoy remote add:*)"
-    ]
-  }
-}
