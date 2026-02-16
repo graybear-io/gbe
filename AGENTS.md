@@ -1,45 +1,40 @@
 # Agent Instructions
 
-## Issue Tracking
+## Task Tracking
 
-We use **bd (beads)** for issue and task tracking.
+We use **Taskwarrior** (`task`) for all task and issue tracking, driven by the `/tw` skill.
 
-**Get full workflow context:** Run `bd prime` for dynamic, up-to-date workflow instructions (~80 lines).
-Hooks auto-inject this at session start when `.beads/` is detected.
+### Work Loop
 
-### Updating Issues
+1. `task ready` — find unblocked tasks (sorted by urgency)
+2. `task <id> info` — read full description and annotations
+3. `task <id> start` — mark active
+4. Do the work
+5. `task <id> done` — mark complete
+6. `task ready` — repeat until empty
 
-**When closing work (Two-Step Process):**
-
-**Step 1 - Close with brief reason:**
-
-```bash
-bd close <id> --reason "Brief topic/summary"
-```
-
-**Step 2 - Add detailed notes:**
+### Creating Tasks
 
 ```bash
-bd update <id> --notes "Detailed findings, context, links to artifacts"
+task add "implement feature" project:gbe priority:H
+task add "write tests" project:gbe depends:<id>
+task <id> annotate "Key file: src/auth.ts"
 ```
 
-**IMPORTANT**: These are **separate commands**. `bd close` does NOT accept `--notes` flag.
+### Closing Work
 
-**Field usage:**
-
-- `--reason`: Brief topic/summary (only with `bd close`)
-- `--notes`: Detailed findings, multi-line context, links (only with `bd update`)
-- **NEVER use `--status completed`** - use `bd close` instead
-- Valid statuses: open, in_progress, closed, blocked
+```bash
+task <id> done                              # Mark complete
+task <id> annotate "Findings: fixed null check in auth.ts:42"  # Add context
+```
 
 ### Core Rules
 
-- Use bd for ALL task, bug and issue tracking
-- Always use --json flag for programmatic use
-- link discovered work with `discovered-from` dependencies
-- check `bd ready` before asking "what should I work on?"
-- store AI planning docs in `history/` directory
-- run `bd <cmd> --help` to discover available flags
+- Use Taskwarrior for ALL task, bug and issue tracking
+- Use `depends:<id>` to link discovered/related work
+- Check `task ready` before asking "what should I work on?"
+- Use `task <id> annotate` to attach context, not separate docs
+- Run `task <cmd> --help` to discover available flags
 - do NOT create markdown TODO lists
 - do NOT use external issue trackers
 - do NOT duplicate tracking systems
@@ -56,26 +51,24 @@ When a command fails:
 1. **Try the fix** - If you know the correct parameter/command, use it
 1. **If uncertain, STOP and ASK** - Don't guess
 
-**Before running bd commands:**
+**Before running task commands:**
 
-- If uncertain about flags, run `bd <command> --help` FIRST
-- Common mistake: `bd close` does NOT accept `--notes` (see "Updating Issues" section)
-- Common mistake: Combining flags from different commands (use separate commands)
+- If uncertain about flags, run `task <command> --help` FIRST
+- Use `task <id> done` to complete tasks, `task <id> annotate` for notes
 
 Examples:
 
 ✅ **Good - Discovered correct parameter:**
-> "The `bd update` command failed with '--comment: unknown flag'. Looking at the available flags, I see `--notes` is the correct parameter for detailed context. Let me try that instead."
-> [proceeds to use --notes]
+> "The `task modify` command failed with an unknown flag. Let me run `task modify --help` to find the right syntax."
 
 ✅ **Good - Uncertain about fix:**
-> "I got error 'invalid status: completed'. I'm not sure what the valid statuses are. Should I use `bd close` instead, or is there a different status value I should use?"
+> "I got an error setting dependencies. Should I use `depends:3` or a different syntax?"
 
 ❌ **Bad - Silent workaround:**
 > [Command fails, tries different approach without mentioning the error]
 
 ❌ **Bad - Guessing at flags:**
-> [Tries `bd close --notes` without checking if the flag exists]
+> [Tries unknown flags without checking `--help` first]
 
 When in doubt, STOP and ASK.
 
@@ -156,14 +149,13 @@ When in doubt, STOP and ASK
 
 **MANDATORY WORKFLOW:**
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
+1. **File remaining work** - `task add` for anything that needs follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
+3. **Update task status** - `task <id> done` for finished work, annotate in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
 
    ```bash
    git pull --rebase
-   bd sync
    git push
    git status  # MUST show "up to date with origin"
    ```
