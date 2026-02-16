@@ -143,6 +143,12 @@ After EVERY tool call, check the result:
 
 When in doubt, STOP and ASK
 
+## Required Reading
+
+Follow these guides before writing code in any GBE subproject:
+
+- `GUIDE_SECURITY.md` — validated newtypes, deserialization policy, error separation, concurrency defaults, CI gates, process spawning
+
 ## Landing the Plane (Session Completion)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
