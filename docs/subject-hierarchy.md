@@ -45,6 +45,15 @@ gbe.                                    # root namespace
 │       ├── ...change                   # data mutations
 │       └── ...access                   # sensitive data access
 │
+├── jobs.                               # ── job lifecycle ──
+│   ├── {job_type}.                    # per job type
+│   │   ├── created                    # job created with all tasks
+│   │   ├── completed                  # all tasks completed
+│   │   ├── failed                     # terminal failure (task exhausted retries)
+│   │   └── cancelled                  # externally cancelled
+│   └── _control.>                     # job system control plane
+│       └── ...cancel                  # cancel request
+│
 └── tasks.                              # ── task orchestration ──
     ├── {task_type}.                    # per task type, 3 streams by consumer role
     │   ├── queue                       # pending + claimed (workers)
@@ -86,6 +95,15 @@ gbe.events.system.health                    # health heartbeat
 gbe.events.api.error                        # API error occurred
 gbe.events.auth.failure                     # failed login attempt
 gbe.events.audit.change                     # data was mutated
+```
+
+### Job Lifecycle
+
+```text
+gbe.jobs.daily-report.created               # job created with task DAG
+gbe.jobs.daily-report.completed             # all tasks finished
+gbe.jobs.daily-report.failed                # task failed terminally
+gbe.jobs.daily-report.cancelled             # externally cancelled
 ```
 
 ### Task Orchestration
