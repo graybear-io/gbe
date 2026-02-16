@@ -83,7 +83,6 @@ chmod +x .git/hooks/pre-commit
 
 **Not in git?** Hooks are local-only (`.git/hooks/` not tracked). Document setup in README or project setup guide.
 
-
 ## Quick Reference
 
 ```bash
