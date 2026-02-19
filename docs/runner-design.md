@@ -1,21 +1,26 @@
-# gbe-runner Design
+# gbe-operative Design
 
 **Date**: 2026-02-16
-**Status**: Draft
+**Status**: Superseded by [ecumene-roles.md](./ecumene-roles.md)
 **Context**: First production use of GBE — orchestrate DAG-based jobs over existing Python tooling.
+
+> **Note**: This document describes the original single-binary runner design.
+> The architecture has evolved to separate the **Oracle** (DAG walking) and
+> **Operative** (task execution) roles. See [ecumene-roles.md](./ecumene-roles.md)
+> for the current design. `gbe-runner` has been renamed to `gbe-operative`.
 
 ---
 
 ## Overview
 
-`gbe-runner` is a CLI binary that orchestrates jobs. A job is a DAG of tasks
+`gbe-operative` is a CLI binary that orchestrates jobs. A job is a DAG of tasks
 defined in YAML. Each task wraps an existing Python CLI tool via a gbe-envoy
 adapter. State is tracked in gbe-nexus's transport and KV store.
 
 Triggered by cron:
 
 ```
-gbe-runner --org org_acme --date 2026-02-16 --job jobs/daily-report.yaml
+gbe-operative --org org_acme --date 2026-02-16 --job jobs/daily-report.yaml
 ```
 
 The runner is **not part of GBE** — it is a consumer of GBE's infrastructure.
@@ -25,7 +30,7 @@ The runner is **not part of GBE** — it is a consumer of GBE's infrastructure.
 ## Architecture
 
 ```text
-cron ──► gbe-runner
+cron ──► gbe-operative
            │
            ├── starts gbe-router (per-job, temporary)
            ├── loads YAML → JobDefinition → validates DAG
@@ -61,10 +66,10 @@ cron ──► gbe-runner
 
 ## Repo Structure
 
-New sibling repo: `gbe/gbe-runner/` (separate git). Single crate.
+New sibling repo: `gbe/gbe-operative/` (separate git). Single crate.
 
 ```text
-gbe-runner/
+gbe-operative/
   Cargo.toml
   src/
     main.rs            # CLI entry, arg parsing, wiring
@@ -98,7 +103,7 @@ gbe-runner/
 ## CLI Interface
 
 ```text
-gbe-runner --org <ORG_ID> --date <DATE> --job <PATH>
+gbe-operative --org <ORG_ID> --date <DATE> --job <PATH>
            [--backend memory|redis]
            [--router-bin <PATH>]
            [--adapter-bin <PATH>]

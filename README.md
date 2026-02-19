@@ -11,10 +11,13 @@ composable tools and roles, infinitely composable from small parts.
 | --- | --- | --- |
 | [gbe-envoy](https://github.com/graybear-io/gbe-envoy) | Envoy | Cross-cluster bridge and tool composition substrate |
 | [gbe-nexus](https://github.com/graybear-io/gbe-nexus) | Nexus | Transport layer and message backbone |
+| [gbe-oracle](gbe-oracle/) | Oracle | DAG walking and task dispatch |
+| [gbe-operative](gbe-operative/) | Operative | Task execution and reporting |
 | [gbe-sentinel](https://github.com/graybear-io/gbe-sentinel) | Sentinel | Per-host VM lifecycle manager |
 
 ## Shared Docs
 
+- [Ecumene Roles](docs/ecumene-roles.md) — Role architecture: traits, oracle/operative contract
 - [Naming Themes](docs/naming-themes.md) — Forerunner role names and alternative themes
 - [Subject Hierarchy](docs/subject-hierarchy.md) — Bus subject namespace design
 - [Transport Abstraction](docs/transport-abstraction.md) — Transport trait design

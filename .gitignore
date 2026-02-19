@@ -7,5 +7,6 @@
 # Child repos (independent git histories)
 gbe-envoy/
 gbe-nexus/
-gbe-runner/
+gbe-operative/
+gbe-oracle/
 gbe-sentinel/
