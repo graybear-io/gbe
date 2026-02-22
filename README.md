@@ -14,6 +14,7 @@ composable tools and roles, infinitely composable from small parts.
 | [gbe-oracle](gbe-oracle/) | Oracle | DAG walking and task dispatch |
 | [gbe-operative](gbe-operative/) | Operative | Task execution and reporting |
 | [gbe-sentinel](https://github.com/graybear-io/gbe-sentinel) | Sentinel | Per-host VM lifecycle manager |
+| [gbe-watcher](https://github.com/graybear-io/gbe-watcher) | Watcher | Event monitoring, sweep, and archival |
 
 ## Shared Docs
 
