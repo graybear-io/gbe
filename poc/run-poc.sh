@@ -19,7 +19,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ENVOY_DIR="$(cd "$SCRIPT_DIR/../gbe-envoy" && pwd)"
+GBE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ROUTER_SOCK="/tmp/gbe-router.sock"
 NEXUS_DIR="/tmp/nexus"
 PIDS=""
@@ -47,15 +47,15 @@ export RUST_LOG="${RUST_LOG:-off}"
 
 # Build envoy + sentinel on macOS
 echo "[poc] building envoy + sentinel (macOS)..."
-cargo build --manifest-path "$ENVOY_DIR/Cargo.toml" -p gbe-router -p gbe-adapter -p gbe-client -q
+cargo build --manifest-path "$GBE_ROOT/Cargo.toml" -p gbe-router -p gbe-adapter -p gbe-client -q
 cargo build --manifest-path "$SCRIPT_DIR/Cargo.toml" -p poc-sentinel -q
 
 # Build operative on ark
 echo "[poc] building operative (ark)..."
 ssh ark '. $HOME/.cargo/env && cargo build --manifest-path /mnt/projects/gbe/poc/Cargo.toml -p poc-operative -q'
 
-ROUTER="$ENVOY_DIR/target/debug/gbe-router"
-CLIENT="$ENVOY_DIR/target/debug/gbe-client"
+ROUTER="$GBE_ROOT/target/debug/gbe-router"
+CLIENT="$GBE_ROOT/target/debug/gbe-client"
 SENTINEL="$SCRIPT_DIR/target/debug/poc-sentinel"
 
 # Start router
@@ -67,7 +67,7 @@ sleep 1
 # Start sentinel — it registers its own streams and starts an adapter
 echo "[poc] starting sentinel..."
 export GBE_ROUTER="$ROUTER_SOCK"
-export ENVOY_DIR="$ENVOY_DIR"
+export ENVOY_DIR="$GBE_ROOT"
 "$SENTINEL" &
 SENTINEL_PID=$!
 PIDS="$SENTINEL_PID $PIDS"
