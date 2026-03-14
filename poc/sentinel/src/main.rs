@@ -107,7 +107,14 @@ fn main() {
     };
 
     let mut adapter_child = Command::new(&adapter_bin)
-        .args(["--router", &router_sock, "--", "sh", "-c", &operative_cmd])
+        .args([
+            "--router", &router_sock,
+            "--metadata", &format!("stream_type=task-output"),
+            "--metadata", &format!("label=output/{TASK_ID}"),
+            "--metadata", &format!("task_id={TASK_ID}"),
+            "--metadata", &format!("host={HOST_ID}"),
+            "--", "sh", "-c", &operative_cmd,
+        ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -261,8 +268,7 @@ fn main() {
 struct EnvoyStream {
     tool_id: String,
     _control: UnixStream, // Keep alive — router unregisters on drop
-    listener: UnixListener,
-    clients: Vec<UnixStream>,
+    clients: Arc<Mutex<Vec<UnixStream>>>,
     seq: AtomicU64,
 }
 
@@ -293,24 +299,31 @@ impl EnvoyStream {
         let socket_path = data_addr.strip_prefix("unix://")
             .ok_or("invalid data address")?;
         let listener = UnixListener::bind(socket_path)?;
-        listener.set_nonblocking(true)?;
 
-        Ok(Self { tool_id, _control: control, listener, clients: Vec::new(), seq: AtomicU64::new(0) })
+        // Background thread accepts subscribers continuously
+        let clients: Arc<Mutex<Vec<UnixStream>>> = Arc::new(Mutex::new(Vec::new()));
+        let clients_clone = clients.clone();
+        thread::spawn(move || {
+            for stream in listener.incoming() {
+                match stream {
+                    Ok(s) => { clients_clone.lock().unwrap().push(s); }
+                    Err(_) => break,
+                }
+            }
+        });
+
+        Ok(Self { tool_id, _control: control, clients, seq: AtomicU64::new(0) })
     }
 
-    fn publish(&mut self, json: &str) {
-        // Accept new subscribers
-        while let Ok((stream, _)) = self.listener.accept() {
-            self.clients.push(stream);
-        }
-
-        if self.clients.is_empty() { return; }
+    fn publish(&self, json: &str) {
+        let mut clients = self.clients.lock().unwrap();
+        if clients.is_empty() { return; }
 
         let seq = self.seq.fetch_add(1, Ordering::Relaxed);
         let frame = DataFrame { seq, payload: format!("{json}\n").into_bytes() };
         let bytes = frame.to_bytes();
 
-        self.clients.retain(|client| {
+        clients.retain(|client| {
             let mut c = client;
             c.write_all(&bytes).is_ok() && c.flush().is_ok()
         });
@@ -321,7 +334,7 @@ fn emit_event(json: &str, file: &mut File, stream: &Option<Arc<Mutex<EnvoyStream
     writeln!(file, "{json}").ok();
     file.flush().ok();
     if let Some(s) = stream {
-        if let Ok(mut s) = s.lock() {
+        if let Ok(s) = s.lock() {
             s.publish(json);
         }
     }
