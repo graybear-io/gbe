@@ -18,7 +18,7 @@
 | **gbe-envoy** | Composable tool plumbing (router, adapter, buffer, proxy) | Data piping |
 | **gbe-client** | TUI renderer, subscribes to a single envoy source | Display sink |
 | **gbe-overseer** | Source discovery + surface orchestration | Human command interface |
-| **gbe-cryptum** | Wayland compositor hosting TUI surfaces (via foot) | Display provider |
+| **gbe-cryptum** | Display plane: ttyd-connect (native client) + future Metarch compositor | Display provider |
 | **gbe-ark** | Alpine VM constructor (shell scripts + ISO tooling) | Test bed for Cryptum |
 
 ---
@@ -63,7 +63,7 @@
                       └──────┬───────┘
                              │ subscribe
                              ▼
-  ── display stack ─────────────────────────────────────────
+  ── display plane (ttyd) ─────────────────────────────────
 
       ┌──────────┐  "what sources exist?"       │
       │ overseer │◄─────────────────────────────┘
@@ -71,21 +71,28 @@
       └────┬─────┘
            │ "show source X"
            ▼
-      ┌──────────┐  frames   ┌─────────┐
-      │ cryptum  │◄──────────│  client  │
-      │ (surface)│  via foot │ (render) │
-      └──────────┘           └─────────┘
+      ┌──────────┐  PTY/WS   ┌──────────────┐
+      │  client  │──────────►│     ttyd      │
+      │ (render) │  via ttyd │ (VM, :7681+)  │
+      └──────────┘           └──────┬────────┘
+                                    │ WebSocket
+                              ┌─────▼────────┐
+                              │ ttyd-connect  │  macOS
+                              │ (or Metarch)  │  native terminal
+                              └──────────────┘
 ```
 
 ---
 
 ## Layer Boundaries
 
-- **Overseer** is display-agnostic. It never touches pixels — it tells Cryptum "allocate a surface for source X."
-- **Cryptum** is gbe-ignorant (today). It hosts foot terminals; gbe-client runs inside them. A future built-in shim could consume gbe frames directly.
-- **Envoy** components (router, adapter, buffer, proxy) are the data plane. Client is a terminal sink on that plane.
+- **Three planes**: control (envoy JSON, Unix sockets), data (envoy binary frames, Unix sockets), display (ttyd PTY bytes, WebSocket). Each is independent.
+- **Overseer** is display-agnostic. It discovers sources and tells the display plane what to show.
+- **Cryptum** provides the display plane. Today: `ttyd-connect` (single-stream native client). Future: Metarch (multi-stream terminal compositor). Runs on the client side (macOS), not on the VM.
+- **ttyd** runs on the VM, wrapping the envoy client's PTY. It's a dumb transport — no awareness of envoy protocol.
+- **Envoy** components (router, adapter, buffer, proxy) are the data plane. Client renders to a terminal; ttyd ships that terminal output remotely.
 - **Nexus** is the control plane for job execution. Envoy's router is a separate control plane for tool data streams.
-- **Operative → Adapter** is the bridge between stacks. When an operative spawns adapters to run tools, those adapters register as sources on the envoy router — making task output visible to the display stack without the operative knowing or caring who's watching.
+- **Operative → Adapter** is the bridge between stacks. When an operative spawns adapters to run tools, those adapters register as sources on the envoy router — making task output visible to the display plane without the operative knowing or caring who's watching.
 
 ---
 
