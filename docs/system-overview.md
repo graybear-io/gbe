@@ -1,25 +1,31 @@
 # GBE System Overview
 
-**Date**: 2026-03-01
-**Purpose**: Quick-reference map of all projects and how they connect.
+**GBE (Gray Bear Ecumene)** is a distributed system for composing, orchestrating, and executing computational work inside ephemeral, isolated virtual machines. Components communicate exclusively through a shared bus — no component calls another directly.
+
+Naming follows Halo's **Forerunner** civilization theme. The "Ecumene" is the collective.
+
+---
+
+## The Story in One Paragraph
+
+A user defines a **job** as a DAG of tasks. The **Oracle** walks that DAG, publishing ready tasks to the bus. **Operatives** claim and execute those tasks (shell commands, HTTP calls, LLM completions, or nested sub-DAGs). **Sentinel** boots a fresh Firecracker microVM per task, injects the operative, and tears it down when done — every task gets a pristine sandbox. **Nexus** is the message bus and state store binding everything together. **Watcher** detects stuck jobs and retries them; its **Archiver** drains audit streams to cold storage. **Envoy** is a separate composition substrate — a protocol for wiring Unix tools together through adapters. **Cryptum** is the display plane — ttyd serves PTY streams from the VM, and `ttyd-connect` renders them natively on macOS. **Harness** is a Python framework for Anthropic API agentic loops.
 
 ---
 
 ## Projects
 
-| Project | What it is | Key trait/role |
-|---------|-----------|----------------|
+| Project | What it is | Key role |
+|---------|-----------|----------|
 | **gbe-nexus** | Message bus + KV state store | Transport backbone |
 | **gbe-oracle** | DAG walker, emits tasks as deps resolve | Task routing |
-| **gbe-operative** | Executes tasks inside VMs, reports outcomes | Task execution |
-| **gbe-harness** | Python agentic LLM loop (Anthropic API + tools) | Operative impl (planned) |
-| **gbe-sentinel** | Per-host VM lifecycle (create, destroy, fence) | Boundary enforcement |
-| **gbe-watcher** | Sweep/archive, retention, anomaly detection | Event monitoring |
-| **gbe-envoy** | Composable tool plumbing (router, adapter, buffer, proxy) | Data piping |
-| **gbe-client** | TUI renderer, subscribes to a single envoy source | Display sink |
-| **gbe-overseer** | Source discovery + surface orchestration | Human command interface |
-| **gbe-cryptum** | Display plane: ttyd-connect (native client) + future Metarch compositor | Display provider |
-| **gbe-ark** | Alpine VM constructor (shell scripts + ISO tooling) | Test bed for Cryptum |
+| **gbe-operative** | Executes tasks inside VMs | Task execution |
+| **gbe-sentinel** | Per-host VM lifecycle | Boundary enforcement |
+| **gbe-watcher** | Sweep/archive, anomaly detection | Event monitoring |
+| **gbe-envoy** | Tool composition (router, adapter, buffer, proxy) | Data piping |
+| **gbe-cryptum** | Display plane: ttyd-connect + future Metarch | Display provider |
+| **gbe-ark** | Alpine VM constructor | Runtime environment |
+| **gbe-harness** | Python agentic LLM loop | Operative impl (planned) |
+| **gbe-overseer** | Source discovery + surface orchestration | Human interface (planned) |
 
 ---
 
@@ -84,17 +90,53 @@
 
 ---
 
-## Layer Boundaries
+## Three Planes
 
-- **Three planes**: control (envoy JSON, Unix sockets), data (envoy binary frames, Unix sockets), display (ttyd PTY bytes, WebSocket). Each is independent.
-- **Overseer** is display-agnostic. It discovers sources and tells the display plane what to show.
-- **Cryptum** provides the display plane. Today: `ttyd-connect` (single-stream native client). Future: Metarch (multi-stream terminal compositor). Runs on the client side (macOS), not on the VM.
-- **ttyd** runs on the VM, wrapping the envoy client's PTY. It's a dumb transport — no awareness of envoy protocol.
-- **Envoy** components (router, adapter, buffer, proxy) are the data plane. Client renders to a terminal; ttyd ships that terminal output remotely.
-- **Nexus** is the control plane for job execution. Envoy's router is a separate control plane for tool data streams.
-- **Operative → Adapter** is the bridge between stacks. When an operative spawns adapters to run tools, those adapters register as sources on the envoy router — making task output visible to the display plane without the operative knowing or caring who's watching.
+| Plane | Protocol | Transport | Scope |
+|-------|----------|-----------|-------|
+| **Control** | Envoy JSON (newline-delimited) | Unix sockets | Tool registration, subscriptions |
+| **Data** | Envoy binary frames (len+seq+payload) | Unix sockets (P2P) | Tool output streaming |
+| **Display** | ttyd (prefix byte + payload) | WebSocket | Remote terminal rendering |
+
+Each plane is independent. ttyd has no awareness of envoy. Envoy has no awareness of ttyd.
 
 ---
+
+## Design Principles
+
+1. **Bus, not calls** — Components never call each other. All communication via Nexus subjects.
+2. **Traits are contracts** — Oracle, Operative, Transport, StateStore, Sentinel are all traits. Implementations swap freely.
+3. **Envelope/payload separation** — Transport owns metadata. Domains own data.
+4. **Ephemeral isolation** — Every task gets a fresh VM. No side effects leak.
+5. **Fail-stop DAGs** — One task failure halts the job. Simple, safe, deterministic.
+6. **Claim-check for large data** — Bus carries references. Blobs live externally.
+7. **Config-driven onboarding** — New task types via config, not code.
+
+---
+
+## How a Job Executes
+
+```
+1. Job submitted (YAML/JSON DAG of tasks)
+2. Oracle validates DAG, emits root tasks → gbe.tasks.{type}.queue
+3. Sentinel claims task (CAS on state store), boots Firecracker VM
+4. Operative inside VM executes task, returns outcome via vsock
+5. Sentinel publishes result → gbe.tasks.{type}.terminal
+6. Oracle hears completion, unblocks dependents, emits next tasks
+7. Repeat 3-6 until DAG exhausted
+8. Oracle publishes JobCompleted → gbe.jobs.{type}.completed
+```
+
+If a task stalls, Watcher detects it via `updated_at` scan, retries up to budget, then fails the job.
+
+---
+
+## Component Details
+
+- [Job Pipeline](components/job-pipeline.md) — Nexus, Oracle, Operative, Sentinel, Watcher
+- [Envoy](components/envoy.md) — Tool composition substrate
+- [Display Plane](components/display.md) — Cryptum, Ark, Harness, Overseer
+- [Implementation Status](components/status.md) — Progress table and known gaps
 
 ## See Also
 
