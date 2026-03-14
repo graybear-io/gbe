@@ -21,5 +21,9 @@
 # POC build artifacts
 /poc/target/
 
+# Non-Rust projects (not part of Cargo workspace, tracked separately)
+/gbe-ark/
+/gbe-harness/
+
 # Legacy child repos (pending deletion)
 /need-to-delete-soon/
