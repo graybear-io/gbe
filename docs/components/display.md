@@ -48,7 +48,7 @@ Six Wayland/VNC/RDP attempts failed on headless Alpine (no GPU). See `crates/cry
 
 Alpine Linux VM provisioning for UTM on macOS. `constructor.sh` installs ttyd, openssh, fonts. Shared folder via 9p mounts macOS `~/projects` at `/mnt/projects`. ark-watch OpenRC service manages the ttyd lifecycle.
 
-Ark is a **development** VM. It is not the production VM path — Sentinel uses Firecracker with ephemeral rootfs. The two are independent.
+Ark is a **development** VM. The production VM path targets Firecracker (Linux/KVM) with ephemeral rootfs, but the VM backend is pluggable. Currently sentinel manages operatives on ark via SSH.
 
 ---
 

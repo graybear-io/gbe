@@ -8,7 +8,7 @@ Naming follows Halo's **Forerunner** civilization theme. The "Ecumene" is the co
 
 ## The Story in One Paragraph
 
-A user defines a **job** as a DAG of tasks. The **Oracle** walks that DAG, publishing ready tasks to the bus. **Operatives** claim and execute those tasks (shell commands, HTTP calls, LLM completions, or nested sub-DAGs). **Sentinel** boots a fresh Firecracker microVM per task, injects the operative, and tears it down when done — every task gets a pristine sandbox. **Nexus** is the message bus and state store binding everything together. **Watcher** detects stuck jobs and retries them; its **Archiver** drains audit streams to cold storage. **Envoy** is a separate composition substrate — a protocol for wiring Unix tools together through adapters. **Cryptum** is the display plane — ttyd serves PTY streams from the VM, and `ttyd-connect` renders them natively on macOS. **Harness** is a Python framework for Anthropic API agentic loops.
+A user defines a **job** as a DAG of tasks. The **Oracle** walks that DAG, publishing ready tasks to the bus. **Operatives** claim and execute those tasks (shell commands, HTTP calls, LLM completions, or nested sub-DAGs). **Sentinel** boots a fresh VM per task, injects the operative, and tears it down when done — every task gets a pristine sandbox. VM backend is pluggable (Firecracker planned for production, SSH to ark for development). **Nexus** is the message bus and state store binding everything together. **Watcher** detects stuck jobs and retries them; its **Archiver** drains audit streams to cold storage. **Envoy** is a separate composition substrate — a protocol for wiring Unix tools together through adapters. **Cryptum** is the display plane — ttyd serves PTY streams from the VM, and `ttyd-connect` renders them natively on macOS. **Harness** is a Python framework for Anthropic API agentic loops.
 
 ---
 
@@ -164,7 +164,7 @@ This works across disparate connected networks. A sentinel behind a firewall wit
 ```
 1. Job submitted (YAML/JSON DAG of tasks)
 2. Oracle validates DAG, emits root tasks → gbe.tasks.{type}.queue
-3. Sentinel claims task (CAS on state store), boots Firecracker VM
+3. Sentinel claims task (CAS on state store), boots VM (Firecracker planned, SSH for dev)
 4. Operative inside VM executes task, publishes events via vsock to sentinel
 5. Sentinel bridges events from edge nexus → core nexus (gbe.tasks.{type}.terminal)
 6. Oracle hears completion, unblocks dependents, emits next tasks

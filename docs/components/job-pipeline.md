@@ -65,7 +65,7 @@ Driver resolves `input_from` references between tasks (dot-notation into upstrea
 
 Crate: `crates/sentinel`
 
-Boots ephemeral Firecracker VMs per task. Communicates with guest operative over vsock (JSON-lines protocol). Three-phase network security evolution: NAT → proxy → zero-trust tool proxy. Slot-based capacity model. Run loop implemented: subscribes to task queues, claims via CAS, emits lifecycle events through edge transport, bridges to core via nexus-bridge. VM provisioning and vsock listener are stubs.
+Boots ephemeral VMs per task. VM backend is pluggable — Firecracker (Linux/KVM) planned for production, SSH to ark for development. Communicates with guest operative over vsock (JSON-lines protocol, Unix sockets for macOS dev). Three-phase network security evolution: NAT → proxy → zero-trust tool proxy. Slot-based capacity model. Run loop implemented: subscribes to task queues, claims via CAS, emits lifecycle events through edge transport, bridges to core via nexus-bridge. Vsock listener relays operative messages and acks terminal outcomes. VM provisioning is a stub.
 
 Sentinel is the **nexus bridge**: it owns an edge transport locally, receives operative events over vsock, publishes them to the edge transport, and bridges them to core nexus. The operative never touches the bus directly — its world is sentinel-sized. This enables operation across disparate networks where VMs may have zero network access and sentinels may sit behind firewalls with only port 22 available.
 
