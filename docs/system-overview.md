@@ -102,6 +102,37 @@ Each plane is independent. ttyd has no awareness of envoy. Envoy has no awarenes
 
 ---
 
+## Information Topology
+
+Components have deliberately constrained views of the world:
+
+```text
+                    ┌─────────────────────────────────┐
+                    │        core nexus (Redis)        │
+                    │   oracle, watcher, overseer      │
+                    └──────┬──────────────┬────────────┘
+                           │              │
+                    ┌──────▼──────┐ ┌─────▼───────┐
+                    │  sentinel A │ │ sentinel B  │
+                    │  [bridge]   │ │ [bridge]    │
+                    │  edge nexus │ │ edge nexus  │
+                    └──┬──────┬───┘ └──┬──────┬───┘
+                       │      │        │      │
+                   [vsock] [vsock]  [vsock] [vsock]
+                       │      │        │      │
+                    ┌──▼──┐┌──▼──┐  ┌──▼──┐┌──▼──┐
+                    │op-1 ││op-2 │  │op-3 ││op-4 │
+                    └─────┘└─────┘  └─────┘└─────┘
+```
+
+- **Operative** sees only sentinel (via vsock). No network, no bus access, no awareness of other operatives.
+- **Sentinel** sees its operatives (vsock inward) and some path to core nexus (outward). It bridges between the two tiers using `nexus-bridge`.
+- **Oracle/Overseer** see only core nexus. They never address operatives or sentinels directly.
+
+This works across disparate connected networks. A sentinel behind a firewall with only port 22 can bridge through an SSH tunnel. A fleet of VMs reachable only through their sentinel's vsock needs nothing more. The operative's world is sentinel-sized — deliberately.
+
+---
+
 ## Design Principles
 
 1. **Bus, not calls** — Components never call each other. All communication via Nexus subjects.
@@ -111,6 +142,7 @@ Each plane is independent. ttyd has no awareness of envoy. Envoy has no awarenes
 5. **Fail-stop DAGs** — One task failure halts the job. Simple, safe, deterministic.
 6. **Claim-check for large data** — Bus carries references. Blobs live externally.
 7. **Config-driven onboarding** — New task types via config, not code.
+8. **Edge-native transport** — Components work across network boundaries. No operative requires direct bus access. Sentinel bridges edge ↔ core.
 
 ---
 
@@ -120,8 +152,8 @@ Each plane is independent. ttyd has no awareness of envoy. Envoy has no awarenes
 1. Job submitted (YAML/JSON DAG of tasks)
 2. Oracle validates DAG, emits root tasks → gbe.tasks.{type}.queue
 3. Sentinel claims task (CAS on state store), boots Firecracker VM
-4. Operative inside VM executes task, returns outcome via vsock
-5. Sentinel publishes result → gbe.tasks.{type}.terminal
+4. Operative inside VM executes task, publishes events via vsock to sentinel
+5. Sentinel bridges events from edge nexus → core nexus (gbe.tasks.{type}.terminal)
 6. Oracle hears completion, unblocks dependents, emits next tasks
 7. Repeat 3-6 until DAG exhausted
 8. Oracle publishes JobCompleted → gbe.jobs.{type}.completed

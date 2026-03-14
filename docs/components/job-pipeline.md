@@ -6,7 +6,7 @@ The job execution pipeline: DAG submission → task routing → VM isolation →
 
 ## Nexus — The Backbone
 
-**Repo**: gbe-nexus (Rust workspace: 6 crates)
+**Repo**: gbe-nexus (Rust workspace: 7 crates)
 
 Three abstractions:
 - **Transport** trait — publish/subscribe over Redis Streams (NATS planned)
@@ -14,6 +14,26 @@ Three abstractions:
 - **Jobs Domain** — TaskDefinition, JobDefinition, state machines, lifecycle events
 
 Three-stream pattern per task type: `queue` (workers), `progress` (orchestrator), `terminal` (monitors). Envelope is transport-owned (message_id, subject, timestamp, trace_id). Payload is domain-owned, wrapped in `DomainPayload<T>` with schema version and dedup ID.
+
+### Two-Tier Model
+
+Nexus operates in two tiers:
+
+- **Core nexus** (Redis/NATS) — system-wide backbone. Oracle, Watcher, Overseer connect here.
+- **Edge nexus** (MemoryTransport or future durable local store) — runs on sentinel hosts or inside VMs. Operatives publish here via vsock relay. No network dependency.
+
+Sentinel is the only component that spans both tiers.
+
+### Nexus Bridge (`nexus-bridge` crate)
+
+Subscribes to subjects on a source transport and republishes to one or more sink transports. Tracks a cursor (last forwarded message ID) per subject for resumability.
+
+```
+edge MemoryTransport ──[bridge]──→ core Redis transport
+                       └─────────→ envoy streams (display)
+```
+
+The bridge uses consumer group "bridge" with `StartPosition::Earliest` so no events are missed. Subject routing is configurable — not all edge subjects need to cross the boundary.
 
 ---
 
@@ -46,6 +66,8 @@ Driver resolves `input_from` references between tasks (dot-notation into upstrea
 **Repo**: gbe-sentinel (Rust workspace)
 
 Boots ephemeral Firecracker VMs per task. Communicates with guest operative over vsock (JSON-lines protocol). Three-phase network security evolution: NAT → proxy → zero-trust tool proxy. Slot-based capacity model. Core structures and contracts defined; run loop and VM management are stubs.
+
+Sentinel is the **nexus bridge**: it owns an edge transport locally, receives operative events over vsock, publishes them to the edge transport, and bridges them to core nexus. The operative never touches the bus directly — its world is sentinel-sized. This enables operation across disparate networks where VMs may have zero network access and sentinels may sit behind firewalls with only port 22 available.
 
 ---
 
