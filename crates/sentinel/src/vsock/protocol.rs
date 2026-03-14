@@ -57,6 +57,26 @@ pub enum SentinelMessage {
         call_id: String,
         result: Value,
     },
+    /// Acknowledges a terminal operative message (Result or Error).
+    /// Sent after sentinel publishes the event to the edge transport.
+    Ack { id: String },
+}
+
+impl OperativeMessage {
+    /// Returns the task ID from any message variant.
+    pub fn task_id(&self) -> &str {
+        match self {
+            Self::Progress { id, .. }
+            | Self::Result { id, .. }
+            | Self::Error { id, .. }
+            | Self::ToolCall { id, .. } => id,
+        }
+    }
+
+    /// True for Result and Error — the terminal outcomes that get acked.
+    pub fn is_terminal(&self) -> bool {
+        matches!(self, Self::Result { .. } | Self::Error { .. })
+    }
 }
 
 /// Deserialize an operative message with size limit enforcement.
@@ -184,6 +204,46 @@ mod tests {
             assert_eq!(tools.len(), 2);
         } else {
             panic!("expected Task");
+        }
+    }
+
+    #[test]
+    fn sentinel_message_ack_round_trip() {
+        let msg = SentinelMessage::Ack { id: "t1".into() };
+        let bytes = serde_json::to_vec(&msg).unwrap();
+        let parsed: SentinelMessage = serde_json::from_slice(&bytes).unwrap();
+        assert!(matches!(parsed, SentinelMessage::Ack { ref id } if id == "t1"));
+    }
+
+    #[test]
+    fn is_terminal_for_result_and_error() {
+        let result =
+            parse_operative_message(br#"{"type":"result","id":"t1","output":null,"exit_code":0}"#)
+                .unwrap();
+        let error =
+            parse_operative_message(br#"{"type":"error","id":"t2","error":"fail","exit_code":1}"#)
+                .unwrap();
+        let progress =
+            parse_operative_message(br#"{"type":"progress","id":"t3","step":"s","status":"ok"}"#)
+                .unwrap();
+
+        assert!(result.is_terminal());
+        assert!(error.is_terminal());
+        assert!(!progress.is_terminal());
+    }
+
+    #[test]
+    fn task_id_from_all_variants() {
+        let msgs = [
+            r#"{"type":"progress","id":"a","step":"s","status":"ok"}"#,
+            r#"{"type":"result","id":"b","output":null,"exit_code":0}"#,
+            r#"{"type":"error","id":"c","error":"e","exit_code":1}"#,
+            r#"{"type":"tool_call","id":"d","call_id":"c1","tool":"t","params":{}}"#,
+        ];
+        let expected = ["a", "b", "c", "d"];
+        for (json, expected_id) in msgs.iter().zip(expected.iter()) {
+            let msg = parse_operative_message(json.as_bytes()).unwrap();
+            assert_eq!(msg.task_id(), *expected_id);
         }
     }
 

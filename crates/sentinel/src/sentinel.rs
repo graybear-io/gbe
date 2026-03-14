@@ -12,6 +12,7 @@ use crate::config::SentinelConfig;
 use crate::error::SentinelError;
 use crate::handler::TaskHandler;
 use crate::health::HealthPublisher;
+use crate::vsock::listener::{VsockBackend, VsockListener};
 
 /// Tracks VM slot usage with atomic operations. Safe to share across
 /// concurrent task handlers without external locking.
@@ -75,6 +76,7 @@ pub struct Sentinel {
     pub(crate) store: Arc<dyn StateStore>,
     pub(crate) slots: Arc<SlotTracker>,
     pub(crate) bridge: Option<NexusBridge>,
+    pub(crate) vsock_backend: Option<VsockBackend>,
 }
 
 impl Sentinel {
@@ -96,7 +98,14 @@ impl Sentinel {
             store,
             slots,
             bridge: None,
+            vsock_backend: None,
         })
+    }
+
+    /// Configure the vsock backend for accepting operative connections.
+    pub fn with_vsock(&mut self, backend: VsockBackend) -> &mut Self {
+        self.vsock_backend = Some(backend);
+        self
     }
 
     /// Configure the bridge with subjects to forward from edge → core.
@@ -227,8 +236,19 @@ impl Sentinel {
             }
         });
 
-        // TODO: start vsock listener for VM connections
-        // TODO: relay OperativeMessages from vsock → edge transport
+        // Start vsock listener for VM connections
+        let vsock_handle = if let Some(backend) = self.vsock_backend.take() {
+            let listener =
+                VsockListener::new(backend, self.edge_transport.clone(), host_id.clone());
+            let vsock_token = token.child_token();
+            Some(tokio::spawn(async move {
+                if let Err(e) = listener.run(vsock_token).await {
+                    tracing::error!(%e, "vsock listener failed");
+                }
+            }))
+        } else {
+            None
+        };
 
         // Wait for cancellation
         token.cancelled().await;
@@ -252,8 +272,11 @@ impl Sentinel {
             sub.unsubscribe().await.ok();
         }
 
-        // Stop health beacon
+        // Stop health beacon and vsock listener
         health_handle.abort();
+        if let Some(handle) = vsock_handle {
+            handle.abort();
+        }
 
         // Stop bridge
         if let Some(bridge) = &mut self.bridge {
