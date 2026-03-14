@@ -1,0 +1,20 @@
+[package]
+name = "gbe-oracle"
+description = "DAG walker and task coordinator for GBE"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+gbe-jobs-domain.workspace = true
+gbe-nexus.workspace = true
+async-trait.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+bytes.workspace = true
+serde.workspace = true

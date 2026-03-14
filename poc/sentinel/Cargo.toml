@@ -9,6 +9,6 @@ path = "src/main.rs"
 
 [dependencies]
 chrono = "0.4"
-gbe-protocol = { path = "../../gbe-envoy/protocol" }
+gbe-protocol = { path = "../../crates/protocol" }
 libc = "0.2"
 serde_json = "1"

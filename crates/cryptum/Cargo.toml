@@ -1,0 +1,15 @@
+[package]
+name = "ttyd-connect"
+description = "Native macOS terminal client for ttyd WebSocket streams"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+libc = "0.2"
+tungstenite = { version = "0.26", features = ["native-tls"] }
+url = "2"
+
+[dev-dependencies]
+serde_json.workspace = true

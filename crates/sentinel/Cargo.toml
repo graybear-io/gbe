@@ -1,0 +1,27 @@
+[package]
+name = "gbe-sentinel"
+description = "Per-host VM lifecycle manager for GBE task execution"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+gbe-nexus.workspace = true
+gbe-nexus-bridge.workspace = true
+gbe-state-store.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+gbe-nexus-memory.workspace = true
+gbe-nexus-redis.workspace = true
+gbe-state-store-redis.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

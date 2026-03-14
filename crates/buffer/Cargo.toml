@@ -1,0 +1,24 @@
+[package]
+name = "gbe-buffer"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+name = "gbe_buffer"
+path = "src/lib.rs"
+
+[[bin]]
+name = "gbe-buffer"
+path = "src/main.rs"
+
+[[bench]]
+name = "buffer_bench"
+harness = false
+
+[dependencies]
+thiserror = { workspace = true }
+
+[dev-dependencies]
+criterion = "0.5"

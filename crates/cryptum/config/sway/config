@@ -1,0 +1,21 @@
+# Cryptum — sway config for headless VNC compositor
+# Runs inside Alpine VM, served to host via wayvnc
+
+# Headless output
+output "HEADLESS-1" resolution 1280x720
+
+# No window chrome — foot is the entire surface
+default_border none
+gaps inner 0
+gaps outer 0
+focus_follows_mouse no
+
+# Dark background
+output * bg #1a1a26 solid_color
+
+# Disable Xwayland (not needed)
+xwayland disable
+
+# Launch wayvnc and foot from within sway
+exec wayvnc 0.0.0.0 5900
+exec foot --fullscreen

@@ -1,0 +1,19 @@
+[package]
+name = "gbe-nexus-bridge"
+description = "Transport-to-transport bridge for two-tier nexus (edge ↔ core)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+gbe-nexus.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+gbe-nexus-memory.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

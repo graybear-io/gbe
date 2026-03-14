@@ -1,10 +1,27 @@
+# Rust build artifacts
+/target
+**/*.rs.bk
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
 # OS
 .DS_Store
 
 # Claude Code
 .claude/settings.local.json
 
-# Child repos (independent git histories)
+# Local environment overrides
+.env.local
+
+# POC build artifacts
+/poc/target/
+
+# Legacy child repos (will be removed after monorepo migration verified)
 gbe-envoy/
 gbe-nexus/
 gbe-operative/
@@ -14,4 +31,3 @@ gbe-watcher/
 gbe-ark/
 gbe-cryptum/
 gbe-harness/
-/poc/target/
