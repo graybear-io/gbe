@@ -4,7 +4,7 @@
 
 ## Cryptum — The Display Plane
 
-**Repo**: gbe-cryptum (Rust)
+Crate: `crates/cryptum` (ttyd-connect)
 
 Remote terminal access via ttyd (PTY over WebSocket) + native Rust client. Runs on the **client side** (macOS), not on the VM.
 
@@ -38,13 +38,13 @@ The envoy client renders to a PTY. ttyd transports that PTY remotely. ttyd-conne
 Multi-stream terminal compositor. Connects to N ttyd instances, renders each as a pane. Layout, focus, resize across streams.
 
 ### History
-Six Wayland/VNC/RDP attempts failed on headless Alpine (no GPU). See `gbe-cryptum/docs/vnc-migration-notes.md`. Smithay POC (phases 0-4) archived.
+Six Wayland/VNC/RDP attempts failed on headless Alpine (no GPU). See `crates/cryptum/docs/vnc-migration-notes.md`. Smithay POC (phases 0-4) archived.
 
 ---
 
 ## Ark — The Foundation
 
-**Repo**: gbe-ark (Shell)
+**Location**: `gbe-ark/` (shell scripts, not part of Cargo workspace)
 
 Alpine Linux VM provisioning for UTM on macOS. `constructor.sh` installs ttyd, openssh, fonts. Shared folder via 9p mounts macOS `~/projects` at `/mnt/projects`. ark-watch OpenRC service manages the ttyd lifecycle.
 
@@ -54,7 +54,7 @@ Ark is a **development** VM. It is not the production VM path — Sentinel uses 
 
 ## Harness — The Learning Loop
 
-**Repo**: gbe-harness (Python)
+**Location**: `gbe-harness/` (Python, not part of Cargo workspace)
 
 Educational agentic loop framework. Calls Anthropic API with tool definitions, parses tool_use blocks, executes tools, feeds results back. Uses `anthropic` SDK directly. Built with uv + just. 80 tests.
 

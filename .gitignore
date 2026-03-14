@@ -21,13 +21,5 @@
 # POC build artifacts
 /poc/target/
 
-# Legacy child repos (will be removed after monorepo migration verified)
-gbe-envoy/
-gbe-nexus/
-gbe-operative/
-gbe-oracle/
-gbe-sentinel/
-gbe-watcher/
-gbe-ark/
-gbe-cryptum/
-gbe-harness/
+# Legacy child repos (pending deletion)
+/need-to-delete-soon/

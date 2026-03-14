@@ -1,6 +1,6 @@
 # Envoy — Tool Composition Substrate
 
-**Repo**: gbe-envoy (Rust workspace: 5 crates)
+Crates: `protocol`, `router`, `adapter`, `buffer`, `client`, `proxy`
 
 Separate from the job execution pipeline. A protocol for wiring Unix tools together through adapters, with a TUI client for interactive use.
 

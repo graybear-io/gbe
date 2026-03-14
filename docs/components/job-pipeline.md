@@ -6,7 +6,7 @@ The job execution pipeline: DAG submission → task routing → VM isolation →
 
 ## Nexus — The Backbone
 
-**Repo**: gbe-nexus (Rust workspace: 7 crates)
+Crates: `nexus`, `nexus-memory`, `nexus-bridge`, `nexus-redis`, `state-store`, `state-store-redis`, `jobs-domain`
 
 Three abstractions:
 - **Transport** trait — publish/subscribe over Redis Streams (NATS planned)
@@ -39,7 +39,7 @@ The bridge uses consumer group "bridge" with `StartPosition::Earliest` so no eve
 
 ## Oracle — The Coordinator
 
-**Repo**: gbe-oracle (Rust, single crate)
+Crate: `crates/oracle`
 
 `SimpleOracle` is a **sync state machine** — two HashSets (`dispatched`, `completed`) and a filter. `ready_tasks()` returns tasks whose dependencies are all completed and that haven't been dispatched yet. Failure is terminal: one task fails, no more dispatch. `OracleDriver` wraps it with bus event emission. 16 tests cover linear, diamond, and wide fan-out DAGs.
 
@@ -47,7 +47,7 @@ The bridge uses consumer group "bridge" with `StartPosition::Earliest` so no eve
 
 ## Operative — The Executor
 
-**Repo**: gbe-operative (Rust, single crate)
+Crate: `crates/operative`
 
 Trait: `fn handles() -> &[TaskType]` + `async fn execute(task) -> TaskOutcome`. Six implementations:
 - **ShellOperative** — `sh -c <command>`, stdout capture, JSON auto-detect
@@ -63,9 +63,9 @@ Driver resolves `input_from` references between tasks (dot-notation into upstrea
 
 ## Sentinel — The Boundary
 
-**Repo**: gbe-sentinel (Rust workspace)
+Crate: `crates/sentinel`
 
-Boots ephemeral Firecracker VMs per task. Communicates with guest operative over vsock (JSON-lines protocol). Three-phase network security evolution: NAT → proxy → zero-trust tool proxy. Slot-based capacity model. Core structures and contracts defined; run loop and VM management are stubs.
+Boots ephemeral Firecracker VMs per task. Communicates with guest operative over vsock (JSON-lines protocol). Three-phase network security evolution: NAT → proxy → zero-trust tool proxy. Slot-based capacity model. Run loop implemented: subscribes to task queues, claims via CAS, emits lifecycle events through edge transport, bridges to core via nexus-bridge. VM provisioning and vsock listener are stubs.
 
 Sentinel is the **nexus bridge**: it owns an edge transport locally, receives operative events over vsock, publishes them to the edge transport, and bridges them to core nexus. The operative never touches the bus directly — its world is sentinel-sized. This enables operation across disparate networks where VMs may have zero network access and sentinels may sit behind firewalls with only port 22 available.
 
@@ -73,6 +73,6 @@ Sentinel is the **nexus bridge**: it owns an edge transport locally, receives op
 
 ## Watcher — The Watchdog
 
-**Repo**: gbe-watcher (Rust workspace: 2 crates)
+Crates: `crates/watcher`, `crates/watcher-tui`
 
 Two subsystems: **Watcher** (stuck job detection, stream trimming with distributed Redis lock) and **Archiver** (batch consumption from streams, gzip JSONL to cold storage, ack-after-write). TUI monitor for real-time event observation (ratatui). 15+ integration tests.

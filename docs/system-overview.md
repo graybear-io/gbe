@@ -12,20 +12,33 @@ A user defines a **job** as a DAG of tasks. The **Oracle** walks that DAG, publi
 
 ---
 
-## Projects
+## Crates
 
-| Project | What it is | Key role |
-|---------|-----------|----------|
-| **gbe-nexus** | Message bus + KV state store | Transport backbone |
-| **gbe-oracle** | DAG walker, emits tasks as deps resolve | Task routing |
-| **gbe-operative** | Executes tasks inside VMs | Task execution |
-| **gbe-sentinel** | Per-host VM lifecycle | Boundary enforcement |
-| **gbe-watcher** | Sweep/archive, anomaly detection | Event monitoring |
-| **gbe-envoy** | Tool composition (router, adapter, buffer, proxy) | Data piping |
-| **gbe-cryptum** | Display plane: ttyd-connect + future Metarch | Display provider |
-| **gbe-ark** | Alpine VM constructor | Runtime environment |
-| **gbe-harness** | Python agentic LLM loop | Operative impl (planned) |
-| **gbe-overseer** | Source discovery + surface orchestration | Human interface (planned) |
+Monorepo — all Rust crates live under `crates/`, one Cargo workspace.
+
+| Crate | What it is | Key role |
+|-------|-----------|----------|
+| `crates/nexus` | Transport trait + envelope | Transport backbone |
+| `crates/nexus-memory` | In-memory transport | Edge / testing |
+| `crates/nexus-bridge` | Edge → core forwarding | Two-tier bridge |
+| `crates/nexus-redis` | Redis Streams transport | Core backbone |
+| `crates/state-store` | KV state store trait | State backbone |
+| `crates/state-store-redis` | Redis state store | State backend |
+| `crates/jobs-domain` | Task/job schemas, state machines | Domain types |
+| `crates/oracle` | DAG walker, emits tasks as deps resolve | Task routing |
+| `crates/operative` | Executes tasks inside VMs | Task execution |
+| `crates/sentinel` | Per-host VM lifecycle | Boundary enforcement |
+| `crates/watcher` | Sweep/archive, anomaly detection | Event monitoring |
+| `crates/watcher-tui` | TUI monitor (ratatui) | Observability |
+| `crates/protocol` | Envoy wire protocol | Shared types |
+| `crates/router` | Envoy tool router | Data piping |
+| `crates/adapter` | Envoy stdio adapter | Data piping |
+| `crates/buffer` | Ring/rope buffer | Data piping |
+| `crates/client` | Envoy stream TUI | Data piping |
+| `crates/proxy` | Envoy proxy | Data piping |
+| `crates/cryptum` | ttyd-connect native client | Display provider |
+
+Non-Rust (outside `crates/`): **gbe-ark** (Alpine VM constructor, shell), **gbe-harness** (Python agentic loop, planned), **gbe-overseer** (planned).
 
 ---
 

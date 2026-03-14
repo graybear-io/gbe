@@ -219,44 +219,38 @@ params, wraps it via envoy's adapter, and captures output.
 
 ---
 
-## Crate Layout (Target)
+## Crate Layout
 
 ```text
 gbe/
-├── docs/                        # shared architecture docs
-├── gbe-nexus/                   # Nexus: transport + state traits + impls
-│   └── crates/
-│       ├── nexus/               # Transport trait
-│       ├── nexus-memory/        # in-memory impl
-│       ├── nexus-redis/         # redis impl
-│       ├── state-store/         # StateStore trait
-│       ├── state-store-redis/   # redis impl
-│       ├── jobs-domain/         # shared job/task types
-│       └── watcher/             # Watcher role
-├── gbe-oracle/                  # Oracle: DAG walking, task dispatch
-│   └── src/
-│       ├── lib.rs               # Oracle trait + OracleError
-│       ├── dag.rs               # DAG state machine
-│       └── simple.rs            # SimpleOracle impl (in-process)
-├── gbe-operative/               # Operative: task execution
-│   └── src/
-│       ├── lib.rs               # Operative trait + OperativeError
-│       ├── shell.rs             # ShellOperative impl
-│       └── mock.rs              # MockOperative for testing
-├── gbe-envoy/                   # Envoy: tool composition substrate
-│   ├── protocol/
-│   ├── router/
-│   ├── adapter/
-│   ├── buffer/
-│   └── client/
-└── gbe-sentinel/                # Sentinel: VM lifecycle
+├── Cargo.toml                   # workspace root (all crates)
+├── docs/
+├── poc/                         # frozen POC (separate workspace)
+└── crates/
+    ├── nexus/                   # Transport trait + envelope
+    ├── nexus-memory/            # in-memory transport (edge/testing)
+    ├── nexus-bridge/            # edge → core forwarding
+    ├── nexus-redis/             # Redis Streams transport
+    ├── state-store/             # StateStore trait
+    ├── state-store-redis/       # Redis state store
+    ├── jobs-domain/             # shared job/task schemas
+    ├── oracle/                  # DAG walker, task dispatch
+    ├── operative/               # task execution (shell, HTTP, LLM, molecule)
+    ├── sentinel/                # VM lifecycle, boundary enforcement
+    ├── watcher/                 # stuck job detection, archiver
+    ├── watcher-tui/             # TUI monitor
+    ├── protocol/                # envoy wire protocol
+    ├── router/                  # envoy tool router
+    ├── adapter/                 # envoy stdio adapter
+    ├── buffer/                  # ring/rope buffer
+    ├── client/                  # envoy stream TUI
+    ├── proxy/                   # envoy proxy
+    └── cryptum/                 # ttyd-connect native client
 ```
 
 ---
 
 ## Open Questions
 
-- **jobs-domain location**: Currently in gbe-nexus workspace. Both oracle and
-  operative depend on it. Should it move to a shared workspace location?
 - **Beacon**: Is this a trait or a pattern any role can implement?
 - **Overseer**: Human CLI/UI — trait or concrete tool?
