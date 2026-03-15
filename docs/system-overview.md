@@ -2,7 +2,7 @@
 
 **GBE (Gray Bear Ecumene)** is a distributed system for composing, orchestrating, and executing computational work inside ephemeral, isolated virtual machines. Components communicate exclusively through a shared bus — no component calls another directly.
 
-Naming follows Halo's **Forerunner** civilization theme. The "Ecumene" is the collective.
+Naming follows Halo's **Forerunner** civilization theme. The "Ecumene" is the collective. See [ecosystem](../../ecosystem/) for cross-project naming and role tables.
 
 ---
 
