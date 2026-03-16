@@ -7,6 +7,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+frame.workspace = true
 gbe-jobs-domain.workspace = true
 gbe-nexus.workspace = true
 gbe-oracle.workspace = true

@@ -97,12 +97,8 @@ impl EventEmitter {
 /// Helper to generate a dedup ID from component, instance, and event kind.
 ///
 /// Format: `{component}-{instance_id}-{event}-{timestamp_millis}`
-#[allow(clippy::cast_possible_truncation)]
 pub fn dedup_id(component: &str, instance_id: &str, event: &str) -> String {
-    let ts = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .expect("system clock before epoch")
-        .as_millis() as u64;
+    let ts = frame::now_ms();
     format!("{component}-{instance_id}-{event}-{ts}")
 }
 

@@ -4,6 +4,7 @@ mod config;
 mod error;
 mod lock;
 mod watcher;
+pub mod writ_handler;
 
 pub use archive_writer::{ArchiveWriter, FsArchiveWriter};
 pub use archiver::{ArchivalStream, Archiver, ArchiverConfig, BatchReport};

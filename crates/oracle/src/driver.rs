@@ -112,7 +112,7 @@ impl OracleDriver {
             job_type: def.job_type.clone(),
             task_count: def.tasks.len() as u32,
             task_ids,
-            created_at: now_millis(),
+            created_at: frame::now_ms(),
             definition_ref: None,
         };
         if let Err(e) = emitter.emit(&subject, 1, dedup, payload).await {
@@ -131,7 +131,7 @@ impl OracleDriver {
             job_id: self.job_id.clone(),
             org_id: self.org_id.clone(),
             job_type: def.job_type.clone(),
-            completed_at: now_millis(),
+            completed_at: frame::now_ms(),
             result_ref: None,
         };
         if let Err(e) = emitter.emit(&subject, 1, dedup, payload).await {
@@ -154,7 +154,7 @@ impl OracleDriver {
             job_id: self.job_id.clone(),
             org_id: self.org_id.clone(),
             job_type: def.job_type.clone(),
-            failed_at: now_millis(),
+            failed_at: frame::now_ms(),
             failed_task_id: task_id,
             error: format!("task {task_name} failed"),
         };
@@ -174,7 +174,7 @@ impl OracleDriver {
             job_id: self.job_id.clone(),
             org_id: self.org_id.clone(),
             job_type: def.job_type.clone(),
-            cancelled_at: now_millis(),
+            cancelled_at: frame::now_ms(),
             reason: reason.to_string(),
         };
         if let Err(e) = emitter.emit(&subject, 1, dedup, payload).await {
@@ -189,7 +189,7 @@ pub async fn emit_started(emitter: &EventEmitter) {
     let dedup = dedup_id(emitter.component(), emitter.instance_id(), "started");
     let payload = ComponentStarted {
         node: emitter.identity().clone(),
-        started_at: now_millis(),
+        started_at: frame::now_ms(),
         version: None,
     };
     if let Err(e) = emitter.emit(&subject, 1, dedup, payload).await {
@@ -201,14 +201,6 @@ pub async fn emit_started(emitter: &EventEmitter) {
     if let Err(e) = emitter.emit_capabilities(&caps).await {
         warn!(error = %e, "failed to emit CapabilitySet");
     }
-}
-
-#[allow(clippy::cast_possible_truncation)]
-fn now_millis() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .expect("system clock before epoch")
-        .as_millis() as u64
 }
 
 #[cfg(test)]

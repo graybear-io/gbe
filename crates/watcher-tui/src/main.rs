@@ -301,7 +301,7 @@ async fn run_demo_publisher(transport: Arc<dyn Transport>) {
     for comp in components {
         let started = ComponentStarted {
             node: demo_identity(comp, &format!("{comp}-001")),
-            started_at: now_millis(),
+            started_at: frame::now_ms(),
             version: Some("0.1.0".to_string()),
         };
         let subject = gbe_jobs_domain::subjects::lifecycle::started(comp);
@@ -325,7 +325,7 @@ async fn run_demo_publisher(transport: Arc<dyn Transport>) {
         for comp in &components[..2] {
             let hb = Heartbeat {
                 node: demo_identity(comp, &format!("{comp}-001")),
-                timestamp: now_millis(),
+                timestamp: frame::now_ms(),
                 uptime_secs: tick,
             };
             let subject = gbe_jobs_domain::subjects::lifecycle::heartbeat(comp);
@@ -343,7 +343,7 @@ async fn run_demo_publisher(transport: Arc<dyn Transport>) {
         if tick == 12 {
             let degraded = ComponentDegraded {
                 node: demo_identity("sentinel", "sentinel-001"),
-                degraded_at: now_millis(),
+                degraded_at: frame::now_ms(),
                 reason: "redis connection pool exhausted".to_string(),
             };
             let subject = gbe_jobs_domain::subjects::lifecycle::degraded("sentinel");
@@ -360,7 +360,7 @@ async fn run_demo_publisher(transport: Arc<dyn Transport>) {
         if tick == 18 {
             let stopped = ComponentStopped {
                 node: demo_identity("sentinel", "sentinel-001"),
-                stopped_at: now_millis(),
+                stopped_at: frame::now_ms(),
                 reason: "SIGTERM".to_string(),
             };
             let subject = gbe_jobs_domain::subjects::lifecycle::stopped("sentinel");
@@ -374,14 +374,6 @@ async fn run_demo_publisher(transport: Arc<dyn Transport>) {
                 .await;
         }
     }
-}
-
-#[allow(clippy::cast_possible_truncation)]
-fn now_millis() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .expect("system clock before epoch")
-        .as_millis() as u64
 }
 
 fn draw(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App) -> io::Result<()> {

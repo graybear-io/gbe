@@ -7,13 +7,17 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+frame.workspace = true
 gbe-architect.workspace = true
 gbe-jobs-domain.workspace = true
 gbe-nexus.workspace = true
 async-trait.workspace = true
 serde_json.workspace = true
+serde_yaml.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 tracing.workspace = true
+ulid.workspace = true
 
 [dev-dependencies]
 tokio.workspace = true

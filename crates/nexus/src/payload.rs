@@ -25,12 +25,8 @@ impl<T: Serialize> DomainPayload<T> {
     ///
     /// # Panics
     /// Panics if the system clock is before the Unix epoch.
-    #[allow(clippy::cast_possible_truncation)] // millis since epoch fits in u64 until year 584556
     pub fn new(v: u32, id: impl Into<String>, data: T) -> Self {
-        let ts = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("system clock before epoch")
-            .as_millis() as u64;
+        let ts = frame::now_ms();
 
         Self {
             v,
@@ -111,12 +107,8 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::cast_possible_truncation)]
     fn ts_auto_set_to_now() {
-        let before = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64;
+        let before = frame::now_ms();
 
         let payload = DomainPayload::new(
             1,
@@ -127,10 +119,7 @@ mod tests {
             },
         );
 
-        let after = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64;
+        let after = frame::now_ms();
 
         assert!(payload.ts >= before);
         assert!(payload.ts <= after);

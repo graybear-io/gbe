@@ -1,7 +1,6 @@
 use bytes::Bytes;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tokio_util::sync::CancellationToken;
 
 use gbe_nexus::{EventEmitter, Transport, dedup_id};
@@ -141,7 +140,7 @@ impl Watcher {
     async fn detect_stuck_jobs(&self, report: &mut SweepReport) -> Result<(), WatcherError> {
         // Safety: stuck_threshold is a Duration with millis that fit in u64
         #[allow(clippy::cast_possible_truncation)]
-        let threshold = now_millis().saturating_sub(self.config.stuck_threshold.as_millis() as u64);
+        let threshold = frame::now_ms().saturating_sub(self.config.stuck_threshold.as_millis() as u64);
         let threshold_str = threshold.to_string();
 
         let records = self
@@ -192,7 +191,7 @@ impl Watcher {
         fields: &HashMap<String, Bytes>,
         retry_count: u32,
     ) -> Result<(), WatcherError> {
-        let now = now_millis();
+        let now = frame::now_ms();
         // Safety: stuck_threshold is a Duration with millis that fit in u64
         #[allow(clippy::cast_possible_truncation)]
         let timeout_at = now + self.config.stuck_threshold.as_millis() as u64;
@@ -233,7 +232,7 @@ impl Watcher {
     }
 
     async fn fail_job(&self, key: &str) -> Result<(), WatcherError> {
-        let now = now_millis();
+        let now = frame::now_ms();
 
         let mut updates = HashMap::new();
         updates.insert("state".to_string(), Bytes::from("failed"));
@@ -289,12 +288,4 @@ fn extract_task_type(key: &str) -> Option<&str> {
     } else {
         None
     }
-}
-
-#[allow(clippy::cast_possible_truncation)] // millis since epoch fits in u64 until year 584556
-fn now_millis() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as u64
 }

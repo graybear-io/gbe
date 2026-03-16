@@ -76,7 +76,7 @@ pub(crate) async fn run_consumer_loop(mut p: ConsumerParams) {
             .arg("COUNT")
             .arg(p.opts.batch_size)
             .arg("BLOCK")
-            .arg(2000_u64)
+            .arg(200_u64)
             .arg("STREAMS")
             .arg(&p.stream_key)
             .arg(">")

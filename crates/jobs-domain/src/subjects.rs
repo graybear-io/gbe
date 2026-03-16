@@ -47,6 +47,18 @@ pub mod tasks {
     }
 }
 
+pub mod writs {
+    /// Writ subject for a role. Overseer publishes writs here.
+    #[must_use]
+    pub fn role(role_name: &str) -> String {
+        format!("gbe.writs.{role_name}")
+    }
+
+    /// Single response stream. All roles publish WritResponses here.
+    /// Mirrors `gbe_nexus::writ::RESPONSE_SUBJECT`.
+    pub const RESPONSES: &str = "gbe.writs.responses";
+}
+
 pub mod lifecycle {
     #[must_use]
     pub fn started(component: &str) -> String {

@@ -8,11 +8,15 @@ use gbe_state_store::StateStore;
 use serde::Serialize;
 use tokio_util::sync::CancellationToken;
 
+use gbe_nexus::SubscribeOpts;
+use gbe_nexus::writ::WritDispatcher;
+
 use crate::config::SentinelConfig;
 use crate::error::SentinelError;
 use crate::handler::TaskHandler;
 use crate::health::HealthPublisher;
 use crate::vsock::listener::{VsockBackend, VsockListener};
+use crate::writ_handler::SentinelCapabilities;
 
 /// Tracks VM slot usage with atomic operations. Safe to share across
 /// concurrent task handlers without external locking.
@@ -182,6 +186,44 @@ impl Sentinel {
         }
 
         tracing::info!(host_id, slots = self.config.slots, "sentinel started");
+
+        // Subscribe to writs targeting sentinel and ensure response stream
+        let writ_subject = gbe_jobs_domain::subjects::writs::role("sentinel");
+        for subject in [writ_subject.as_str(), gbe_nexus::writ::RESPONSE_SUBJECT] {
+            self.core_transport
+                .ensure_stream(StreamConfig {
+                    subject: subject.to_string(),
+                    max_age: Duration::from_secs(86400),
+                    max_bytes: None,
+                    max_msgs: None,
+                })
+                .await?;
+        }
+
+        let capabilities = SentinelCapabilities::new(
+            self.slots.clone(),
+            emitter.identity().clone(),
+        );
+        let dispatcher = WritDispatcher::new(
+            emitter.identity().clone(),
+            self.core_transport.clone(),
+            Box::new(capabilities),
+        );
+        let _writ_sub = self
+            .core_transport
+            .subscribe(
+                &writ_subject,
+                &format!("sentinel-{host_id}-writs"),
+                Box::new(dispatcher),
+                Some(SubscribeOpts {
+                    batch_size: 1,
+                    max_inflight: 10,
+                    ack_timeout: Duration::from_secs(30),
+                    start_from: gbe_nexus::StartPosition::Latest,
+                }),
+            )
+            .await?;
+        tracing::info!("subscribed to writ subject: {writ_subject}");
 
         // Subscribe to task queues on core transport
         let mut subscriptions = Vec::new();

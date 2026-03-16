@@ -10,4 +10,4 @@
 
 pub mod roles;
 
-pub use roles::{oracle, overseer, sentinel, watcher};
+pub use roles::{oracle, overseer, role_names, sentinel, watcher};

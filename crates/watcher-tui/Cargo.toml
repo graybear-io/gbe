@@ -11,6 +11,7 @@ name = "gbe-watcher"
 path = "src/main.rs"
 
 [dependencies]
+frame.workspace = true
 gbe-nexus.workspace = true
 gbe-nexus-memory.workspace = true
 gbe-nexus-redis.workspace = true

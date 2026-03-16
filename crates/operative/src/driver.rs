@@ -213,7 +213,7 @@ impl Driver {
             task_id,
             job_id: job_id.clone(),
             task_type,
-            completed_at: now_millis(),
+            completed_at: frame::now_ms(),
             result_ref: result_ref.map(String::from),
         };
         if let Err(e) = emitter.emit(&subject, 1, dedup, payload).await {
@@ -242,7 +242,7 @@ impl Driver {
             task_id,
             job_id: job_id.clone(),
             task_type: td.task_type.clone(),
-            failed_at: now_millis(),
+            failed_at: frame::now_ms(),
             error: error_msg.to_string(),
             retry_count: 0,
             max_retries: td.max_retries.unwrap_or(0),
@@ -269,14 +269,6 @@ pub async fn run_job(
 
 fn make_task_id(name: &str) -> Option<TaskId> {
     TaskId::new(&format!("task_{name}")).ok()
-}
-
-#[allow(clippy::cast_possible_truncation)]
-fn now_millis() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .expect("system clock before epoch")
-        .as_millis() as u64
 }
 
 /// Build structured data from a `TaskOutcome` for downstream consumption.

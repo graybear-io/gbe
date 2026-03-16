@@ -26,14 +26,6 @@ struct Cli {
     org_id: String,
 }
 
-#[allow(clippy::cast_possible_truncation)]
-fn now_millis() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .expect("system clock before epoch")
-        .as_millis() as u64
-}
-
 fn build_emitter() -> Option<Arc<EventEmitter>> {
     let url = std::env::var("GBE_TRANSPORT_URL").ok()?;
     // No transport implementation bundled yet.
@@ -53,7 +45,7 @@ fn spawn_heartbeat(
             interval.tick().await;
             let payload = Heartbeat {
                 node: emitter.identity().clone(),
-                timestamp: now_millis(),
+                timestamp: frame::now_ms(),
                 uptime_secs: start.elapsed().as_secs(),
             };
             let subject = subjects::lifecycle::heartbeat(emitter.component());
@@ -68,7 +60,7 @@ fn spawn_heartbeat(
 async fn emit_started(emitter: &EventEmitter) {
     let payload = ComponentStarted {
         node: emitter.identity().clone(),
-        started_at: now_millis(),
+        started_at: frame::now_ms(),
         version: option_env!("CARGO_PKG_VERSION").map(String::from),
     };
     let subject = subjects::lifecycle::started(emitter.component());

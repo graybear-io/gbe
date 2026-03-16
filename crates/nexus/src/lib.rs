@@ -3,6 +3,7 @@ mod envelope;
 mod error;
 mod payload;
 mod transport;
+pub mod writ;
 
 pub use emitter::{EventEmitter, dedup_id};
 pub use envelope::Envelope;

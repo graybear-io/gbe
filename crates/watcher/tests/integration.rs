@@ -57,14 +57,6 @@ async fn cleanup_keys(keys: &[&str]) {
     }
 }
 
-#[allow(clippy::cast_possible_truncation)] // millis since epoch fits in u64 until year 584556
-fn now_millis() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as u64
-}
-
 fn make_stuck_record(state: &str, updated_at: u64, retry_count: u32) -> HashMap<String, Bytes> {
     let mut fields = HashMap::new();
     fields.insert("state".to_string(), Bytes::from(state.to_string()));
@@ -181,7 +173,7 @@ async fn test_sweep_retries_stuck_job() {
     let key = format!("{prefix}email-send:job1");
 
     // Create a stuck job: updated 10 minutes ago, state=processing, retry_count=0
-    let old_time = now_millis() - 600_000;
+    let old_time = frame::now_ms() - 600_000;
     store
         .set_fields(&key, make_stuck_record("processing", old_time, 0))
         .await
@@ -227,7 +219,7 @@ async fn test_sweep_fails_exhausted_job() {
     let key = format!("{prefix}email-send:job2");
 
     // retry_count=3 with max_retries=3 → should fail
-    let old_time = now_millis() - 600_000;
+    let old_time = frame::now_ms() - 600_000;
     store
         .set_fields(&key, make_stuck_record("processing", old_time, 3))
         .await
@@ -271,7 +263,7 @@ async fn test_sweep_skips_terminal_states() {
     let key = format!("{prefix}email-send:job3");
 
     // completed job with old updated_at — should be skipped
-    let old_time = now_millis() - 600_000;
+    let old_time = frame::now_ms() - 600_000;
     store
         .set_fields(&key, make_stuck_record("completed", old_time, 0))
         .await
@@ -346,7 +338,7 @@ async fn test_sweep_once_full_cycle() {
     let key2 = format!("{prefix}email-send:exhausted1");
     let key3 = format!("{prefix}email-send:done1");
 
-    let old_time = now_millis() - 600_000;
+    let old_time = frame::now_ms() - 600_000;
 
     // stuck job (will be retried)
     store

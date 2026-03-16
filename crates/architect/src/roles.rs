@@ -9,6 +9,15 @@ use frame::{
     ParamKind,
 };
 
+/// All known role names in the constellation.
+///
+/// Overseer uses this to derive concrete subjects for lifecycle and writ
+/// subscriptions. This is the Architect's view of what roles exist —
+/// the source of truth for the subject namespace.
+pub fn role_names() -> &'static [&'static str] {
+    &["oracle", "sentinel", "watcher", "overseer"]
+}
+
 /// Standing geas for the Oracle role.
 ///
 /// Oracle walks DAGs, dispatches tasks, and emits job lifecycle events.

@@ -6,6 +6,7 @@ pub mod health;
 pub mod sentinel;
 pub mod vm;
 pub mod vsock;
+pub mod writ_handler;
 
 pub use config::{NetworkMode, SentinelConfig, VmProfile};
 pub use error::SentinelError;
