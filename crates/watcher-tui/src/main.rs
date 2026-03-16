@@ -288,16 +288,19 @@ async fn subscribe_all(
 
 async fn run_demo_publisher(transport: Arc<dyn Transport>) {
     use gbe_jobs_domain::{ComponentDegraded, ComponentStarted, ComponentStopped, Heartbeat};
-    use gbe_nexus::{EventEmitter, dedup_id};
+    use gbe_nexus::{EventEmitter, NodeIdentity, NodeKind, dedup_id};
 
-    let emitter = EventEmitter::new(transport, "demo", "demo-001");
+    fn demo_identity(name: &str, instance: &str) -> NodeIdentity {
+        NodeIdentity::new(name, NodeKind::Service, "gbe", instance)
+    }
+
+    let emitter = EventEmitter::new(transport, demo_identity("demo", "demo-001"));
 
     // Emit a startup sequence
     let components = ["operative", "oracle", "sentinel"];
     for comp in components {
         let started = ComponentStarted {
-            component: comp.to_string(),
-            instance_id: format!("{comp}-001"),
+            node: demo_identity(comp, &format!("{comp}-001")),
             started_at: now_millis(),
             version: Some("0.1.0".to_string()),
         };
@@ -321,8 +324,7 @@ async fn run_demo_publisher(transport: Arc<dyn Transport>) {
 
         for comp in &components[..2] {
             let hb = Heartbeat {
-                component: comp.to_string(),
-                instance_id: format!("{comp}-001"),
+                node: demo_identity(comp, &format!("{comp}-001")),
                 timestamp: now_millis(),
                 uptime_secs: tick,
             };
@@ -340,8 +342,7 @@ async fn run_demo_publisher(transport: Arc<dyn Transport>) {
         // Occasionally emit degraded/stopped for variety
         if tick == 12 {
             let degraded = ComponentDegraded {
-                component: "sentinel".to_string(),
-                instance_id: "sentinel-001".to_string(),
+                node: demo_identity("sentinel", "sentinel-001"),
                 degraded_at: now_millis(),
                 reason: "redis connection pool exhausted".to_string(),
             };
@@ -358,8 +359,7 @@ async fn run_demo_publisher(transport: Arc<dyn Transport>) {
 
         if tick == 18 {
             let stopped = ComponentStopped {
-                component: "sentinel".to_string(),
-                instance_id: "sentinel-001".to_string(),
+                node: demo_identity("sentinel", "sentinel-001"),
                 stopped_at: now_millis(),
                 reason: "SIGTERM".to_string(),
             };

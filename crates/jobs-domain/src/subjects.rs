@@ -79,6 +79,13 @@ pub mod lifecycle {
     pub fn all_components() -> String {
         "gbe.events.lifecycle.*.*".to_string()
     }
+
+    /// Capability announcement for a component.
+    /// Published alongside ComponentStarted and on heartbeat.
+    #[must_use]
+    pub fn capabilities(component: &str) -> String {
+        format!("gbe.events.lifecycle.{component}.capabilities")
+    }
 }
 
 #[cfg(test)]

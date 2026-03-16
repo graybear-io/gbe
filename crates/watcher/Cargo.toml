@@ -7,6 +7,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+gbe-architect.workspace = true
 gbe-nexus.workspace = true
 gbe-state-store.workspace = true
 async-trait.workspace = true

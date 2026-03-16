@@ -622,6 +622,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "frame"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "bytes",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror",
+ "ulid",
+]
+
+[[package]]
 name = "futures"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -722,6 +735,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gbe-architect"
+version = "0.1.0"
+dependencies = [
+ "frame",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+]
+
+[[package]]
 name = "gbe-buffer"
 version = "0.1.0"
 dependencies = [
@@ -747,6 +770,7 @@ dependencies = [
 name = "gbe-jobs-domain"
 version = "0.1.0"
 dependencies = [
+ "frame",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -760,6 +784,7 @@ dependencies = [
  "async-trait",
  "base64",
  "bytes",
+ "frame",
  "serde",
  "serde_json",
  "thiserror",
@@ -837,6 +862,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
+ "gbe-architect",
  "gbe-jobs-domain",
  "gbe-nexus",
  "serde",
@@ -885,6 +911,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
+ "gbe-architect",
  "gbe-nexus",
  "gbe-nexus-bridge",
  "gbe-nexus-memory",
@@ -930,6 +957,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "flate2",
+ "gbe-architect",
  "gbe-nexus",
  "gbe-nexus-redis",
  "gbe-state-store",
@@ -2641,6 +2669,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "470dbf6591da1b39d43c14523b2b469c86879a53e8b758c8e090a470fe7b1fbe"
 dependencies = [
  "rand",
+ "serde",
  "web-time",
 ]
 

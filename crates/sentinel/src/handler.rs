@@ -61,7 +61,10 @@ impl TaskHandler {
         slots: Arc<SlotTracker>,
         edge_transport: Arc<dyn Transport>,
     ) -> Self {
-        let emitter = EventEmitter::new(edge_transport, "sentinel", &host_id);
+        let emitter = EventEmitter::new(
+            edge_transport,
+            gbe_nexus::NodeIdentity::new("sentinel", gbe_nexus::NodeKind::Service, "gbe", &host_id),
+        );
         Self {
             host_id,
             store,

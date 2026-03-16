@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use frame::NodeIdentity;
 use serde::Serialize;
 
 use crate::error::TransportError;
@@ -8,33 +9,33 @@ use crate::transport::{PublishOpts, Transport};
 
 /// Convenience wrapper for publishing domain events to the transport.
 ///
-/// Holds shared transport, component identity, and handles
+/// Holds shared transport, node identity, and handles
 /// `DomainPayload<T>` wrapping + serialization automatically.
 pub struct EventEmitter {
     transport: Arc<dyn Transport>,
-    component: String,
-    instance_id: String,
+    identity: NodeIdentity,
 }
 
 impl EventEmitter {
-    pub fn new(
-        transport: Arc<dyn Transport>,
-        component: impl Into<String>,
-        instance_id: impl Into<String>,
-    ) -> Self {
+    pub fn new(transport: Arc<dyn Transport>, identity: NodeIdentity) -> Self {
         Self {
             transport,
-            component: component.into(),
-            instance_id: instance_id.into(),
+            identity,
         }
     }
 
-    pub fn component(&self) -> &str {
-        &self.component
+    pub fn identity(&self) -> &NodeIdentity {
+        &self.identity
     }
 
+    /// The component name (shorthand for identity.name).
+    pub fn component(&self) -> &str {
+        &self.identity.name
+    }
+
+    /// The instance id (shorthand for identity.instance).
     pub fn instance_id(&self) -> &str {
-        &self.instance_id
+        &self.identity.instance
     }
 
     /// Publish a domain event wrapped in `DomainPayload<T>`.
@@ -71,6 +72,22 @@ impl EventEmitter {
         self.transport.publish(subject, bytes, Some(opts)).await
     }
 
+    /// Publish a `CapabilitySet` on the lifecycle capabilities subject.
+    ///
+    /// Call after `ComponentStarted` at startup, and optionally on heartbeat
+    /// so late-joining nodes (like overseer) can discover capabilities.
+    pub async fn emit_capabilities(
+        &self,
+        capabilities: &frame::CapabilitySet,
+    ) -> Result<String, TransportError> {
+        let subject = format!(
+            "gbe.events.lifecycle.{}.capabilities",
+            self.identity.name
+        );
+        let dedup = dedup_id(self.component(), self.instance_id(), "capabilities");
+        self.emit(&subject, 1, dedup, capabilities).await
+    }
+
     /// Access the underlying transport for subscribe/stream operations.
     pub fn transport(&self) -> &Arc<dyn Transport> {
         &self.transport
@@ -92,9 +109,12 @@ pub fn dedup_id(component: &str, instance_id: &str, event: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transport::{MessageHandler, StreamConfig, SubscribeOpts, Subscription, Transport};
+    use crate::transport::{
+        MessageHandler, StreamConfig, SubscribeOpts, Subscription, Transport,
+    };
     use async_trait::async_trait;
     use bytes::Bytes;
+    use frame::NodeKind;
     use std::sync::Mutex;
     use std::time::Duration;
 
@@ -169,10 +189,17 @@ mod tests {
         }
     }
 
+    fn test_identity(name: &str, instance: &str) -> NodeIdentity {
+        NodeIdentity::new(name, NodeKind::Service, "gbe", instance)
+    }
+
     #[tokio::test]
     async fn emit_wraps_in_domain_payload() {
         let transport = Arc::new(MockTransport::new());
-        let emitter = EventEmitter::new(transport.clone(), "operative", "op-123");
+        let emitter = EventEmitter::new(
+            transport.clone(),
+            test_identity("operative", "op-123"),
+        );
 
         let result = emitter
             .emit(
@@ -205,7 +232,10 @@ mod tests {
     #[tokio::test]
     async fn emit_traced_includes_trace_id() {
         let transport = Arc::new(MockTransport::new());
-        let emitter = EventEmitter::new(transport.clone(), "oracle", "orc-456");
+        let emitter = EventEmitter::new(
+            transport.clone(),
+            test_identity("oracle", "orc-456"),
+        );
 
         emitter
             .emit_traced(
@@ -228,7 +258,10 @@ mod tests {
     #[test]
     fn accessors_return_identity() {
         let transport = Arc::new(MockTransport::new());
-        let emitter = EventEmitter::new(transport, "sentinel", "snt-789");
+        let emitter = EventEmitter::new(
+            transport,
+            test_identity("sentinel", "snt-789"),
+        );
 
         assert_eq!(emitter.component(), "sentinel");
         assert_eq!(emitter.instance_id(), "snt-789");

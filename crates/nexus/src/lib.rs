@@ -12,3 +12,6 @@ pub use transport::{
     Message, MessageHandler, PublishOpts, StartPosition, StreamConfig, SubscribeOpts, Subscription,
     Transport, TransportConfig,
 };
+
+// Re-export frame types that callers need when constructing an EventEmitter.
+pub use frame::{CapabilitySet, NodeIdentity, NodeKind};

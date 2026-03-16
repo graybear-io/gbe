@@ -10,6 +10,9 @@ members = [
     "crates/state-store-redis",
     "crates/jobs-domain",
 
+    # Role definitions
+    "crates/architect",
+
     # Orchestration
     "crates/oracle",
     "crates/operative",
@@ -37,7 +40,11 @@ license = "MIT"
 repository = "https://github.com/graybear-io/gbe"
 
 [workspace.dependencies]
+# Shared ecosystem
+frame = { path = "../frame" }
+
 # Internal crates
+gbe-architect = { path = "crates/architect" }
 gbe-nexus = { path = "crates/nexus" }
 gbe-nexus-memory = { path = "crates/nexus-memory" }
 gbe-nexus-bridge = { path = "crates/nexus-bridge" }

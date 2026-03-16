@@ -45,7 +45,10 @@ impl Watcher {
         .await?;
 
         let instance_id = format!("watcher-{}", ulid::Ulid::new().to_string().to_lowercase());
-        let emitter = EventEmitter::new(transport.clone(), "watcher", &instance_id);
+        let emitter = EventEmitter::new(
+            transport.clone(),
+            gbe_nexus::NodeIdentity::new("watcher", gbe_nexus::NodeKind::Service, "gbe", &instance_id),
+        );
 
         Ok(Self {
             config,
@@ -59,6 +62,13 @@ impl Watcher {
     /// # Errors
     /// Returns `WatcherError` if a sweep or lock operation fails fatally.
     pub async fn run(&self, token: CancellationToken) -> Result<(), WatcherError> {
+        // Emit capabilities on startup
+        let geas = gbe_architect::watcher();
+        let caps = gbe_architect::roles::rich_capabilities_for(&geas, self.emitter.identity().clone());
+        if let Err(e) = self.emitter.emit_capabilities(&caps).await {
+            tracing::warn!("failed to emit CapabilitySet: {e}");
+        }
+
         loop {
             tokio::select! {
                 () = token.cancelled() => {

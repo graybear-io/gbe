@@ -82,7 +82,10 @@ impl Archiver {
             |h| h.to_string_lossy().to_string(),
         );
         let consumer_id = format!("{host}-{}", ulid::Ulid::new());
-        let emitter = EventEmitter::new(transport.clone(), "archiver", &consumer_id);
+        let emitter = EventEmitter::new(
+            transport.clone(),
+            gbe_nexus::NodeIdentity::new("archiver", gbe_nexus::NodeKind::Service, "gbe", &consumer_id),
+        );
 
         Ok(Self {
             config,

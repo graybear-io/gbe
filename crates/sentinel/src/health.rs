@@ -32,7 +32,10 @@ impl HealthPublisher {
         slots: Arc<SlotTracker>,
         interval: Duration,
     ) -> Self {
-        let emitter = EventEmitter::new(edge_transport, "sentinel", &host_id);
+        let emitter = EventEmitter::new(
+            edge_transport,
+            gbe_nexus::NodeIdentity::new("sentinel", gbe_nexus::NodeKind::Service, "gbe", &host_id),
+        );
         Self {
             emitter,
             host_id,

@@ -183,18 +183,23 @@ impl OracleDriver {
     }
 }
 
-/// Emit `ComponentStarted` for the oracle process.
+/// Emit `ComponentStarted` and `CapabilitySet` for the oracle process.
 pub async fn emit_started(emitter: &EventEmitter) {
     let subject = subjects::lifecycle::started("oracle");
     let dedup = dedup_id(emitter.component(), emitter.instance_id(), "started");
     let payload = ComponentStarted {
-        component: emitter.component().to_string(),
-        instance_id: emitter.instance_id().to_string(),
+        node: emitter.identity().clone(),
         started_at: now_millis(),
         version: None,
     };
     if let Err(e) = emitter.emit(&subject, 1, dedup, payload).await {
         warn!(error = %e, subject, "failed to emit ComponentStarted");
+    }
+
+    let geas = gbe_architect::oracle();
+    let caps = gbe_architect::roles::rich_capabilities_for(&geas, emitter.identity().clone());
+    if let Err(e) = emitter.emit_capabilities(&caps).await {
+        warn!(error = %e, "failed to emit CapabilitySet");
     }
 }
 
@@ -329,7 +334,10 @@ mod tests {
     }
 
     fn make_emitter(transport: Arc<MockTransport>) -> Arc<EventEmitter> {
-        Arc::new(EventEmitter::new(transport, "oracle", "orc-test"))
+        Arc::new(EventEmitter::new(
+            transport,
+            gbe_nexus::NodeIdentity::new("oracle", gbe_nexus::NodeKind::Service, "gbe", "orc-test"),
+        ))
     }
 
     #[tokio::test]
@@ -445,15 +453,19 @@ mod tests {
     #[tokio::test]
     async fn emit_started_sends_lifecycle_event() {
         let transport = Arc::new(MockTransport::new());
-        let emitter = EventEmitter::new(transport.clone(), "oracle", "orc-test");
+        let emitter = EventEmitter::new(
+            transport.clone(),
+            gbe_nexus::NodeIdentity::new("oracle", gbe_nexus::NodeKind::Service, "gbe", "orc-test"),
+        );
 
         emit_started(&emitter).await;
 
         let subjects = transport.subjects();
-        assert_eq!(subjects, vec!["gbe.events.lifecycle.oracle.started"]);
+        assert_eq!(subjects[0], "gbe.events.lifecycle.oracle.started");
+        assert_eq!(subjects[1], "gbe.events.lifecycle.oracle.capabilities");
 
         let payload: DomainPayload<ComponentStarted> = transport.payload_at(0);
-        assert_eq!(payload.data.component, "oracle");
-        assert_eq!(payload.data.instance_id, "orc-test");
+        assert_eq!(payload.data.node.name, "oracle");
+        assert_eq!(payload.data.node.instance, "orc-test");
     }
 }

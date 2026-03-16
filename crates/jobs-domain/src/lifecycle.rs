@@ -2,12 +2,13 @@
 // Published to gbe.events.lifecycle.{component}.* subjects.
 // Wrap in DomainPayload<T> from gbe-nexus before publishing.
 
+use frame::NodeIdentity;
+
 /// Component has connected to transport and is ready.
 /// Subject: `gbe.events.lifecycle.{component}.started`
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ComponentStarted {
-    pub component: String,
-    pub instance_id: String,
+    pub node: NodeIdentity,
     pub started_at: u64,
     pub version: Option<String>,
 }
@@ -16,8 +17,7 @@ pub struct ComponentStarted {
 /// Subject: `gbe.events.lifecycle.{component}.stopped`
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ComponentStopped {
-    pub component: String,
-    pub instance_id: String,
+    pub node: NodeIdentity,
     pub stopped_at: u64,
     pub reason: String,
 }
@@ -26,8 +26,7 @@ pub struct ComponentStopped {
 /// Subject: `gbe.events.lifecycle.{component}.heartbeat`
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Heartbeat {
-    pub component: String,
-    pub instance_id: String,
+    pub node: NodeIdentity,
     pub timestamp: u64,
     pub uptime_secs: u64,
 }
@@ -36,8 +35,7 @@ pub struct Heartbeat {
 /// Subject: `gbe.events.lifecycle.{component}.degraded`
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ComponentDegraded {
-    pub component: String,
-    pub instance_id: String,
+    pub node: NodeIdentity,
     pub degraded_at: u64,
     pub reason: String,
 }
@@ -45,26 +43,29 @@ pub struct ComponentDegraded {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use frame::NodeKind;
+
+    fn test_identity(name: &str, instance: &str) -> NodeIdentity {
+        NodeIdentity::new(name, NodeKind::Service, "gbe", instance)
+    }
 
     #[test]
     fn component_started_round_trip() {
         let payload = ComponentStarted {
-            component: "operative".to_string(),
-            instance_id: "op-abc123".to_string(),
+            node: test_identity("operative", "op-abc123"),
             started_at: 1_707_934_567_000,
             version: Some("0.1.0".to_string()),
         };
         let json = serde_json::to_string(&payload).unwrap();
         let back: ComponentStarted = serde_json::from_str(&json).unwrap();
-        assert_eq!(back.component, "operative");
-        assert_eq!(back.instance_id, "op-abc123");
+        assert_eq!(back.node.name, "operative");
+        assert_eq!(back.node.instance, "op-abc123");
     }
 
     #[test]
     fn heartbeat_round_trip() {
         let payload = Heartbeat {
-            component: "oracle".to_string(),
-            instance_id: "orc-def456".to_string(),
+            node: test_identity("oracle", "orc-def456"),
             timestamp: 1_707_934_600_000,
             uptime_secs: 3600,
         };
@@ -76,8 +77,7 @@ mod tests {
     #[test]
     fn component_degraded_round_trip() {
         let payload = ComponentDegraded {
-            component: "sentinel".to_string(),
-            instance_id: "snt-ghi789".to_string(),
+            node: test_identity("sentinel", "snt-ghi789"),
             degraded_at: 1_707_935_000_000,
             reason: "redis connection pool exhausted".to_string(),
         };
@@ -89,8 +89,7 @@ mod tests {
     #[test]
     fn component_stopped_round_trip() {
         let payload = ComponentStopped {
-            component: "watcher".to_string(),
-            instance_id: "wtc-jkl012".to_string(),
+            node: test_identity("watcher", "wtc-jkl012"),
             stopped_at: 1_707_936_000_000,
             reason: "SIGTERM".to_string(),
         };

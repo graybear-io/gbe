@@ -113,7 +113,10 @@ async fn handle_connection(
 ) -> Result<(), SentinelError> {
     let (reader, mut writer) = stream.into_split();
     let mut lines = BufReader::new(reader).lines();
-    let emitter = EventEmitter::new(edge_transport, "sentinel", host_id);
+    let emitter = EventEmitter::new(
+        edge_transport,
+        gbe_nexus::NodeIdentity::new("sentinel", gbe_nexus::NodeKind::Service, "gbe", host_id),
+    );
 
     loop {
         tokio::select! {

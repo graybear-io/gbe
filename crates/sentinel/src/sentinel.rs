@@ -157,7 +157,10 @@ impl Sentinel {
         }
 
         // Emit sentinel started → edge transport (bridge forwards to core)
-        let emitter = EventEmitter::new(self.edge_transport.clone(), "sentinel", host_id);
+        let emitter = EventEmitter::new(
+            self.edge_transport.clone(),
+            gbe_nexus::NodeIdentity::new("sentinel", gbe_nexus::NodeKind::Service, "gbe", host_id),
+        );
         emitter
             .emit(
                 &lifecycle_subject,
@@ -169,6 +172,14 @@ impl Sentinel {
                 },
             )
             .await?;
+
+        // Emit capabilities
+        let task_type_strs: Vec<&str> = self.config.task_types.iter().map(|s| s.as_str()).collect();
+        let geas = gbe_architect::sentinel(host_id, self.config.slots, &task_type_strs);
+        let caps = gbe_architect::roles::rich_capabilities_for(&geas, emitter.identity().clone());
+        if let Err(e) = emitter.emit_capabilities(&caps).await {
+            tracing::warn!(%e, "failed to emit CapabilitySet");
+        }
 
         tracing::info!(host_id, slots = self.config.slots, "sentinel started");
 

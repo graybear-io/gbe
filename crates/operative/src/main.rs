@@ -52,8 +52,7 @@ fn spawn_heartbeat(
         loop {
             interval.tick().await;
             let payload = Heartbeat {
-                component: emitter.component().to_string(),
-                instance_id: emitter.instance_id().to_string(),
+                node: emitter.identity().clone(),
                 timestamp: now_millis(),
                 uptime_secs: start.elapsed().as_secs(),
             };
@@ -68,8 +67,7 @@ fn spawn_heartbeat(
 
 async fn emit_started(emitter: &EventEmitter) {
     let payload = ComponentStarted {
-        component: emitter.component().to_string(),
-        instance_id: emitter.instance_id().to_string(),
+        node: emitter.identity().clone(),
         started_at: now_millis(),
         version: option_env!("CARGO_PKG_VERSION").map(String::from),
     };
@@ -78,6 +76,9 @@ async fn emit_started(emitter: &EventEmitter) {
     if let Err(e) = emitter.emit(&subject, 1, dedup, payload).await {
         warn!(error = %e, "failed to emit ComponentStarted");
     }
+    // Operative does not publish capabilities on the bus — it lives behind sentinel's
+    // boundary and cannot be directly addressed. Sentinel relays operative events via
+    // vsock and publishes capability information on the operative's behalf.
 }
 
 #[tokio::main]

@@ -1,3 +1,4 @@
+pub mod capabilities;
 pub mod definition;
 pub mod error;
 pub mod ids;
