@@ -958,6 +958,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "gbe-test-harness"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "frame",
+ "gbe-nexus",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "ulid",
+]
+
+[[package]]
 name = "gbe-watcher"
 version = "0.1.0"
 dependencies = [

@@ -30,6 +30,9 @@ members = [
 
     # Display
     "crates/cryptum",
+
+    # Testing
+    "crates/test-harness",
 ]
 
 [workspace.package]
@@ -57,6 +60,7 @@ gbe-operative = { path = "crates/operative" }
 gbe-sentinel = { path = "crates/sentinel" }
 gbe-watcher = { path = "crates/watcher" }
 gbe-protocol = { path = "crates/protocol" }
+gbe-test-harness = { path = "crates/test-harness" }
 
 # Async
 tokio = { version = "1", features = ["full"] }
