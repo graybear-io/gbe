@@ -1,14 +1,17 @@
 use bytes::Bytes;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
-use gbe_nexus::{EventEmitter, Transport, dedup_id};
+use gbe_nexus::writ::WritDispatcher;
+use gbe_nexus::{EventEmitter, StreamConfig, SubscribeOpts, Transport, dedup_id};
 use gbe_state_store::{ScanFilter, ScanOp, StateStore};
 
 use crate::config::WatcherConfig;
 use crate::error::WatcherError;
 use crate::lock::DistributedLock;
+use crate::writ_handler::WatcherCapabilities;
 
 const TERMINAL_STATES: &[&str] = &["completed", "failed", "cancelled"];
 
@@ -20,7 +23,7 @@ pub struct Watcher {
     emitter: EventEmitter,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct SweepReport {
     pub retried: u32,
     pub failed: u32,
@@ -46,7 +49,12 @@ impl Watcher {
         let instance_id = format!("watcher-{}", ulid::Ulid::new().to_string().to_lowercase());
         let emitter = EventEmitter::new(
             transport.clone(),
-            gbe_nexus::NodeIdentity::new("watcher", gbe_nexus::NodeKind::Service, "gbe", &instance_id),
+            gbe_nexus::NodeIdentity::new(
+                "watcher",
+                gbe_nexus::NodeKind::Service,
+                "gbe",
+                &instance_id,
+            ),
         );
 
         Ok(Self {
@@ -63,10 +71,46 @@ impl Watcher {
     pub async fn run(&self, token: CancellationToken) -> Result<(), WatcherError> {
         // Emit capabilities on startup
         let geas = gbe_architect::watcher();
-        let caps = gbe_architect::roles::rich_capabilities_for(&geas, self.emitter.identity().clone());
+        let caps =
+            gbe_architect::roles::rich_capabilities_for(&geas, self.emitter.identity().clone());
         if let Err(e) = self.emitter.emit_capabilities(&caps).await {
             tracing::warn!("failed to emit CapabilitySet: {e}");
         }
+
+        // Subscribe to writs targeting watcher
+        let writ_subject = gbe_jobs_domain::subjects::writs::role("watcher");
+        for subject in [writ_subject.as_str(), gbe_nexus::writ::RESPONSE_SUBJECT] {
+            self.transport
+                .ensure_stream(StreamConfig {
+                    subject: subject.to_string(),
+                    max_age: Duration::from_secs(86400),
+                    max_bytes: None,
+                    max_msgs: None,
+                })
+                .await?;
+        }
+
+        let capabilities = Arc::new(WatcherCapabilities::new(self.emitter.identity().clone()));
+        let dispatcher = WritDispatcher::new(
+            self.emitter.identity().clone(),
+            self.transport.clone(),
+            Box::new(Arc::clone(&capabilities)),
+        );
+        let _writ_sub = self
+            .transport
+            .subscribe(
+                &writ_subject,
+                &format!("watcher-{}-writs", self.emitter.instance_id()),
+                Box::new(dispatcher),
+                Some(SubscribeOpts {
+                    batch_size: 1,
+                    max_inflight: 10,
+                    ack_timeout: Duration::from_secs(30),
+                    start_from: gbe_nexus::StartPosition::Latest,
+                }),
+            )
+            .await?;
+        tracing::info!("subscribed to writ subject: {writ_subject}");
 
         loop {
             tokio::select! {
@@ -92,6 +136,8 @@ impl Watcher {
                                 entries = report.entries_trimmed,
                                 "sweep complete"
                             );
+                            // Record for sweep-status writ queries
+                            capabilities.record_sweep(report).await;
                             let sweep_event = serde_json::json!({
                                 "retried": report.retried,
                                 "failed": report.failed,
@@ -140,7 +186,8 @@ impl Watcher {
     async fn detect_stuck_jobs(&self, report: &mut SweepReport) -> Result<(), WatcherError> {
         // Safety: stuck_threshold is a Duration with millis that fit in u64
         #[allow(clippy::cast_possible_truncation)]
-        let threshold = frame::now_ms().saturating_sub(self.config.stuck_threshold.as_millis() as u64);
+        let threshold =
+            frame::now_ms().saturating_sub(self.config.stuck_threshold.as_millis() as u64);
         let threshold_str = threshold.to_string();
 
         let records = self

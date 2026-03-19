@@ -30,6 +30,13 @@ pub trait CapabilityHandler: Send + Sync {
     async fn handle_capability(&self, writ: &frame::Writ) -> WritResponse;
 }
 
+#[async_trait]
+impl<T: CapabilityHandler> CapabilityHandler for Arc<T> {
+    async fn handle_capability(&self, writ: &frame::Writ) -> WritResponse {
+        (**self).handle_capability(writ).await
+    }
+}
+
 /// Common writ handler that implements MessageHandler.
 ///
 /// Wraps a CapabilityHandler and handles the boilerplate:
@@ -58,19 +65,18 @@ impl MessageHandler for WritDispatcher {
         let envelope = msg.envelope();
 
         // Deserialize the writ
-        let payload: DomainPayload<frame::Writ> =
-            match DomainPayload::from_bytes(msg.payload()) {
-                Ok(p) => p,
-                Err(e) => {
-                    warn!(
-                        subject = %envelope.subject,
-                        error = %e,
-                        "failed to deserialize writ, dropping"
-                    );
-                    msg.ack().await?;
-                    return Ok(());
-                }
-            };
+        let payload: DomainPayload<frame::Writ> = match DomainPayload::from_bytes(msg.payload()) {
+            Ok(p) => p,
+            Err(e) => {
+                warn!(
+                    subject = %envelope.subject,
+                    error = %e,
+                    "failed to deserialize writ, dropping"
+                );
+                msg.ack().await?;
+                return Ok(());
+            }
+        };
 
         let writ = &payload.data;
         let writ_id = writ.packet.id;
@@ -86,13 +92,9 @@ impl MessageHandler for WritDispatcher {
         let response = self.handler.handle_capability(writ).await;
 
         // Publish response
-        if let Err(e) = self.emitter
-            .emit(
-                RESPONSE_SUBJECT,
-                1,
-                writ_id.to_string(),
-                &response,
-            )
+        if let Err(e) = self
+            .emitter
+            .emit(RESPONSE_SUBJECT, 1, writ_id.to_string(), &response)
             .await
         {
             warn!(%e, %writ_id, "failed to publish writ response");

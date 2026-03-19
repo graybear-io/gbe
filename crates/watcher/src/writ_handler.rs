@@ -36,30 +36,46 @@ impl writ::CapabilityHandler for WatcherCapabilities {
         match w.capability.as_str() {
             "trigger-sweep" => {
                 // For v0, acknowledge but don't actually trigger — watcher sweeps on its own schedule
-                writ::ok(w, &self.identity, json!({
-                    "note": "sweep trigger acknowledged — watcher will sweep on next cycle"
-                }))
+                writ::ok(
+                    w,
+                    &self.identity,
+                    json!({
+                        "note": "sweep trigger acknowledged — watcher will sweep on next cycle"
+                    }),
+                )
             }
             "sweep-status" => {
                 let last = self.last_sweep.lock().await;
                 match &*last {
-                    Some(report) => writ::ok(w, &self.identity, json!({
-                        "retried": report.retried,
-                        "failed": report.failed,
-                        "streams_trimmed": report.streams_trimmed,
-                        "entries_trimmed": report.entries_trimmed,
-                    })),
-                    None => writ::ok(w, &self.identity, json!({
-                        "note": "no sweep has run yet"
-                    })),
+                    Some(report) => writ::ok(
+                        w,
+                        &self.identity,
+                        json!({
+                            "retried": report.retried,
+                            "failed": report.failed,
+                            "streams_trimmed": report.streams_trimmed,
+                            "entries_trimmed": report.entries_trimmed,
+                        }),
+                    ),
+                    None => writ::ok(
+                        w,
+                        &self.identity,
+                        json!({
+                            "note": "no sweep has run yet"
+                        }),
+                    ),
                 }
             }
             "dead-letter-status" => {
                 // For v0, stub — dead letter monitoring not yet wired
-                writ::ok(w, &self.identity, json!({
-                    "count": 0,
-                    "note": "dead letter monitoring not yet implemented"
-                }))
+                writ::ok(
+                    w,
+                    &self.identity,
+                    json!({
+                        "count": 0,
+                        "note": "dead letter monitoring not yet implemented"
+                    }),
+                )
             }
             _ => writ::unsupported(w, &self.identity),
         }
