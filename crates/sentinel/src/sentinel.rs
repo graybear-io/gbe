@@ -200,10 +200,8 @@ impl Sentinel {
                 .await?;
         }
 
-        let capabilities = SentinelCapabilities::new(
-            self.slots.clone(),
-            emitter.identity().clone(),
-        );
+        let capabilities =
+            SentinelCapabilities::new(self.slots.clone(), emitter.identity().clone());
         let dispatcher = WritDispatcher::new(
             emitter.identity().clone(),
             self.core_transport.clone(),

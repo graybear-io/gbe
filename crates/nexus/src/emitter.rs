@@ -80,10 +80,7 @@ impl EventEmitter {
         &self,
         capabilities: &frame::CapabilitySet,
     ) -> Result<String, TransportError> {
-        let subject = format!(
-            "gbe.events.lifecycle.{}.capabilities",
-            self.identity.name
-        );
+        let subject = format!("gbe.events.lifecycle.{}.capabilities", self.identity.name);
         let dedup = dedup_id(self.component(), self.instance_id(), "capabilities");
         self.emit(&subject, 1, dedup, capabilities).await
     }
@@ -105,9 +102,7 @@ pub fn dedup_id(component: &str, instance_id: &str, event: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transport::{
-        MessageHandler, StreamConfig, SubscribeOpts, Subscription, Transport,
-    };
+    use crate::transport::{MessageHandler, StreamConfig, SubscribeOpts, Subscription, Transport};
     use async_trait::async_trait;
     use bytes::Bytes;
     use frame::NodeKind;
@@ -192,10 +187,7 @@ mod tests {
     #[tokio::test]
     async fn emit_wraps_in_domain_payload() {
         let transport = Arc::new(MockTransport::new());
-        let emitter = EventEmitter::new(
-            transport.clone(),
-            test_identity("operative", "op-123"),
-        );
+        let emitter = EventEmitter::new(transport.clone(), test_identity("operative", "op-123"));
 
         let result = emitter
             .emit(
@@ -228,10 +220,7 @@ mod tests {
     #[tokio::test]
     async fn emit_traced_includes_trace_id() {
         let transport = Arc::new(MockTransport::new());
-        let emitter = EventEmitter::new(
-            transport.clone(),
-            test_identity("oracle", "orc-456"),
-        );
+        let emitter = EventEmitter::new(transport.clone(), test_identity("oracle", "orc-456"));
 
         emitter
             .emit_traced(
@@ -254,10 +243,7 @@ mod tests {
     #[test]
     fn accessors_return_identity() {
         let transport = Arc::new(MockTransport::new());
-        let emitter = EventEmitter::new(
-            transport,
-            test_identity("sentinel", "snt-789"),
-        );
+        let emitter = EventEmitter::new(transport, test_identity("sentinel", "snt-789"));
 
         assert_eq!(emitter.component(), "sentinel");
         assert_eq!(emitter.instance_id(), "snt-789");

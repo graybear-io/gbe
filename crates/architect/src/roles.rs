@@ -434,7 +434,12 @@ mod tests {
 
     #[test]
     fn all_geas_serialize_to_yaml() {
-        for g in [oracle(), watcher(), overseer(), sentinel("h1", 2, &["shell"])] {
+        for g in [
+            oracle(),
+            watcher(),
+            overseer(),
+            sentinel("h1", 2, &["shell"]),
+        ] {
             let yaml = serde_yaml::to_string(&g).unwrap();
             let back: Geas = serde_yaml::from_str(&yaml).unwrap();
             assert_eq!(back.name, g.name);

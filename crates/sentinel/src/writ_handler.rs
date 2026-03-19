@@ -32,26 +32,36 @@ impl writ::CapabilityHandler for SentinelCapabilities {
                 let total = self.slots.total();
                 let available = self.slots.available();
                 let used = total - available;
-                writ::ok(w, &self.identity, json!({
-                    "host_id": self.identity.instance,
-                    "slots_total": total,
-                    "slots_used": used,
-                    "slots_available": available,
-                }))
+                writ::ok(
+                    w,
+                    &self.identity,
+                    json!({
+                        "host_id": self.identity.instance,
+                        "slots_total": total,
+                        "slots_used": used,
+                        "slots_available": available,
+                    }),
+                )
             }
-            "list-vms" => {
-                writ::ok(w, &self.identity, json!({
+            "list-vms" => writ::ok(
+                w,
+                &self.identity,
+                json!({
                     "vms": [],
                     "note": "VM tracking not yet implemented — use host-status for slot info"
-                }))
-            }
+                }),
+            ),
             "drain-host" => {
                 if w.authority.level < frame::AuthorityLevel::Consul {
                     writ::denied(w, &self.identity, "Consul")
                 } else {
-                    writ::ok(w, &self.identity, json!({
-                        "note": "drain acknowledged — actual drain not yet implemented"
-                    }))
+                    writ::ok(
+                        w,
+                        &self.identity,
+                        json!({
+                            "note": "drain acknowledged — actual drain not yet implemented"
+                        }),
+                    )
                 }
             }
             _ => writ::unsupported(w, &self.identity),

@@ -3,9 +3,7 @@
 //! Each service declares what writs it can accept. These are published
 //! on the bus so overseer and other nodes can discover what's available.
 
-use frame::{
-    AuthorityLevel, Capability, CapabilityParam, CapabilitySet, NodeIdentity, ParamKind,
-};
+use frame::{AuthorityLevel, Capability, CapabilityParam, CapabilitySet, NodeIdentity, ParamKind};
 
 /// Build the capability set for Oracle.
 ///

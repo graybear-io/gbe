@@ -9,8 +9,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use frame::{NodeIdentity, WritResponse};
 use gbe_jobs_domain::{JobDefinition, JobId, OrgId};
-use gbe_nexus::writ;
 use gbe_nexus::EventEmitter;
+use gbe_nexus::writ;
 use serde_json::json;
 use tokio::sync::Mutex;
 
@@ -65,18 +65,17 @@ impl OracleCapabilities {
 
         // Parse as JobDefinition (YAML or JSON)
         // Try JSON first, then YAML
-        let def: JobDefinition =
-            if let Ok(d) = serde_json::from_str(&definition_str) {
-                d
-            } else if let Ok(d) = serde_yaml::from_str(&definition_str) {
-                d
-            } else {
-                return writ::error(
-                    w,
-                    &self.identity,
-                    &format!("invalid job definition (tried JSON and YAML): {definition_str}"),
-                );
-            };
+        let def: JobDefinition = if let Ok(d) = serde_json::from_str(&definition_str) {
+            d
+        } else if let Ok(d) = serde_yaml::from_str(&definition_str) {
+            d
+        } else {
+            return writ::error(
+                w,
+                &self.identity,
+                &format!("invalid job definition (tried JSON and YAML): {definition_str}"),
+            );
+        };
 
         // Generate IDs
         let job_id_str = format!("job_{}", ulid::Ulid::new());
@@ -98,33 +97,39 @@ impl OracleCapabilities {
         let task_count = def.tasks.len();
 
         // Create the OracleDriver
-        let driver = match OracleDriver::new(
-            def,
-            job_id.clone(),
-            org_id,
-            Some(self.emitter.clone()),
-        ) {
-            Ok(d) => d,
-            Err(e) => return writ::error(w, &self.identity, &format!("job creation failed: {e}")),
-        };
+        let driver =
+            match OracleDriver::new(def, job_id.clone(), org_id, Some(self.emitter.clone())) {
+                Ok(d) => d,
+                Err(e) => {
+                    return writ::error(w, &self.identity, &format!("job creation failed: {e}"));
+                }
+            };
 
         // Start it (emits JobCreated event)
         driver.start().await;
 
         // Get initial ready tasks
-        let ready: Vec<String> = driver.ready_tasks().iter().map(|t| t.name.clone()).collect();
+        let ready: Vec<String> = driver
+            .ready_tasks()
+            .iter()
+            .map(|t| t.name.clone())
+            .collect();
 
         // Store it
         let mut jobs = self.jobs.lock().await;
         jobs.insert(job_id_str.clone(), RunningJob { driver });
 
-        writ::ok(w, &self.identity, json!({
-            "job_id": job_id_str,
-            "name": job_name,
-            "task_count": task_count,
-            "ready_tasks": ready,
-            "status": "created"
-        }))
+        writ::ok(
+            w,
+            &self.identity,
+            json!({
+                "job_id": job_id_str,
+                "name": job_name,
+                "task_count": task_count,
+                "ready_tasks": ready,
+                "status": "created"
+            }),
+        )
     }
 
     async fn cancel_job(&self, w: &frame::Writ) -> WritResponse {
@@ -152,11 +157,15 @@ impl OracleCapabilities {
         match job {
             Some(mut job) => {
                 job.driver.cancel(reason).await;
-                writ::ok(w, &self.identity, json!({
-                    "job_id": job_id,
-                    "status": "cancelled",
-                    "reason": reason
-                }))
+                writ::ok(
+                    w,
+                    &self.identity,
+                    json!({
+                        "job_id": job_id,
+                        "status": "cancelled",
+                        "reason": reason
+                    }),
+                )
             }
             None => writ::error(w, &self.identity, &format!("job not found: {job_id}")),
         }
@@ -191,13 +200,17 @@ impl OracleCapabilities {
                     .map(|t| t.name.clone())
                     .collect();
 
-                writ::ok(w, &self.identity, json!({
-                    "job_id": job_id,
-                    "name": job.driver.definition().name,
-                    "status": status,
-                    "ready_tasks": ready,
-                    "task_count": job.driver.definition().tasks.len(),
-                }))
+                writ::ok(
+                    w,
+                    &self.identity,
+                    json!({
+                        "job_id": job_id,
+                        "name": job.driver.definition().name,
+                        "status": status,
+                        "ready_tasks": ready,
+                        "task_count": job.driver.definition().tasks.len(),
+                    }),
+                )
             }
             None => writ::error(w, &self.identity, &format!("job not found: {job_id}")),
         }
