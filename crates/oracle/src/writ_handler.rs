@@ -6,8 +6,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use frame::{NodeIdentity, WritResponse};
+use frame::writ::WritFuture;
 use gbe_jobs_domain::{JobDefinition, JobId, OrgId};
 use gbe_nexus::EventEmitter;
 use gbe_nexus::writ;
@@ -38,15 +38,16 @@ impl OracleCapabilities {
     }
 }
 
-#[async_trait]
 impl writ::CapabilityHandler for OracleCapabilities {
-    async fn handle_capability(&self, w: &frame::Writ) -> WritResponse {
-        match w.capability.as_str() {
-            "create-job" => self.create_job(w).await,
-            "cancel-job" => self.cancel_job(w).await,
-            "job-status" => self.job_status(w).await,
-            _ => writ::unsupported(w, &self.identity),
-        }
+    fn handle_capability<'a>(&'a self, w: &'a frame::Writ) -> WritFuture<'a> {
+        Box::pin(async move {
+            match w.capability.as_str() {
+                "create-job" => self.create_job(w).await,
+                "cancel-job" => self.cancel_job(w).await,
+                "job-status" => self.job_status(w).await,
+                _ => writ::unsupported(w, &self.identity),
+            }
+        })
     }
 }
 

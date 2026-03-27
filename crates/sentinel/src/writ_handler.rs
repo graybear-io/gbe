@@ -5,8 +5,8 @@
 
 use std::sync::Arc;
 
-use async_trait::async_trait;
-use frame::{NodeIdentity, WritResponse};
+use frame::NodeIdentity;
+use frame::writ::WritFuture;
 use gbe_nexus::writ;
 use serde_json::json;
 
@@ -24,47 +24,48 @@ impl SentinelCapabilities {
     }
 }
 
-#[async_trait]
 impl writ::CapabilityHandler for SentinelCapabilities {
-    async fn handle_capability(&self, w: &frame::Writ) -> WritResponse {
-        match w.capability.as_str() {
-            "host-status" => {
-                let total = self.slots.total();
-                let available = self.slots.available();
-                let used = total - available;
-                writ::ok(
-                    w,
-                    &self.identity,
-                    json!({
-                        "host_id": self.identity.instance,
-                        "slots_total": total,
-                        "slots_used": used,
-                        "slots_available": available,
-                    }),
-                )
-            }
-            "list-vms" => writ::ok(
-                w,
-                &self.identity,
-                json!({
-                    "vms": [],
-                    "note": "VM tracking not yet implemented — use host-status for slot info"
-                }),
-            ),
-            "drain-host" => {
-                if w.authority.level < frame::AuthorityLevel::Consul {
-                    writ::denied(w, &self.identity, "Consul")
-                } else {
+    fn handle_capability<'a>(&'a self, w: &'a frame::Writ) -> WritFuture<'a> {
+        Box::pin(async move {
+            match w.capability.as_str() {
+                "host-status" => {
+                    let total = self.slots.total();
+                    let available = self.slots.available();
+                    let used = total - available;
                     writ::ok(
                         w,
                         &self.identity,
                         json!({
-                            "note": "drain acknowledged — actual drain not yet implemented"
+                            "host_id": self.identity.instance,
+                            "slots_total": total,
+                            "slots_used": used,
+                            "slots_available": available,
                         }),
                     )
                 }
+                "list-vms" => writ::ok(
+                    w,
+                    &self.identity,
+                    json!({
+                        "vms": [],
+                        "note": "VM tracking not yet implemented — use host-status for slot info"
+                    }),
+                ),
+                "drain-host" => {
+                    if w.authority.level < frame::AuthorityLevel::Consul {
+                        writ::denied(w, &self.identity, "Consul")
+                    } else {
+                        writ::ok(
+                            w,
+                            &self.identity,
+                            json!({
+                                "note": "drain acknowledged — actual drain not yet implemented"
+                            }),
+                        )
+                    }
+                }
+                _ => writ::unsupported(w, &self.identity),
             }
-            _ => writ::unsupported(w, &self.identity),
-        }
+        })
     }
 }

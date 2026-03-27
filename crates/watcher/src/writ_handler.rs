@@ -3,8 +3,8 @@
 //! Uses the common WritDispatcher from gbe-nexus. Only the
 //! capability-specific logic lives here.
 
-use async_trait::async_trait;
-use frame::{NodeIdentity, WritResponse};
+use frame::NodeIdentity;
+use frame::writ::WritFuture;
 use gbe_nexus::writ;
 use serde_json::json;
 
@@ -30,54 +30,55 @@ impl WatcherCapabilities {
     }
 }
 
-#[async_trait]
 impl writ::CapabilityHandler for WatcherCapabilities {
-    async fn handle_capability(&self, w: &frame::Writ) -> WritResponse {
-        match w.capability.as_str() {
-            "trigger-sweep" => {
-                // For v0, acknowledge but don't actually trigger — watcher sweeps on its own schedule
-                writ::ok(
-                    w,
-                    &self.identity,
-                    json!({
-                        "note": "sweep trigger acknowledged — watcher will sweep on next cycle"
-                    }),
-                )
-            }
-            "sweep-status" => {
-                let last = self.last_sweep.lock().await;
-                match &*last {
-                    Some(report) => writ::ok(
+    fn handle_capability<'a>(&'a self, w: &'a frame::Writ) -> WritFuture<'a> {
+        Box::pin(async move {
+            match w.capability.as_str() {
+                "trigger-sweep" => {
+                    // For v0, acknowledge but don't actually trigger — watcher sweeps on its own schedule
+                    writ::ok(
                         w,
                         &self.identity,
                         json!({
-                            "retried": report.retried,
-                            "failed": report.failed,
-                            "streams_trimmed": report.streams_trimmed,
-                            "entries_trimmed": report.entries_trimmed,
+                            "note": "sweep trigger acknowledged — watcher will sweep on next cycle"
                         }),
-                    ),
-                    None => writ::ok(
-                        w,
-                        &self.identity,
-                        json!({
-                            "note": "no sweep has run yet"
-                        }),
-                    ),
+                    )
                 }
+                "sweep-status" => {
+                    let last = self.last_sweep.lock().await;
+                    match &*last {
+                        Some(report) => writ::ok(
+                            w,
+                            &self.identity,
+                            json!({
+                                "retried": report.retried,
+                                "failed": report.failed,
+                                "streams_trimmed": report.streams_trimmed,
+                                "entries_trimmed": report.entries_trimmed,
+                            }),
+                        ),
+                        None => writ::ok(
+                            w,
+                            &self.identity,
+                            json!({
+                                "note": "no sweep has run yet"
+                            }),
+                        ),
+                    }
+                }
+                "dead-letter-status" => {
+                    // For v0, stub — dead letter monitoring not yet wired
+                    writ::ok(
+                        w,
+                        &self.identity,
+                        json!({
+                            "count": 0,
+                            "note": "dead letter monitoring not yet implemented"
+                        }),
+                    )
+                }
+                _ => writ::unsupported(w, &self.identity),
             }
-            "dead-letter-status" => {
-                // For v0, stub — dead letter monitoring not yet wired
-                writ::ok(
-                    w,
-                    &self.identity,
-                    json!({
-                        "count": 0,
-                        "note": "dead letter monitoring not yet implemented"
-                    }),
-                )
-            }
-            _ => writ::unsupported(w, &self.identity),
-        }
+        })
     }
 }
