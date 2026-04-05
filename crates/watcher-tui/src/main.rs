@@ -54,7 +54,7 @@ impl App {
         let sources = vec![
             Source {
                 name: "lifecycle".into(),
-                subject_prefix: "gbe.events.lifecycle.".into(),
+                subject_prefix: "lifecycle.".into(),
                 count: 0,
             },
             Source {
@@ -176,12 +176,12 @@ impl MessageHandler for TuiHandler {
 }
 
 fn extract_source(subject: &str) -> String {
-    // gbe.events.lifecycle.operative.started -> operative
+    // lifecycle.operative.started -> operative
     // gbe.jobs.report.created -> report
     // gbe.tasks.email-send.queue -> email-send
     let parts: Vec<&str> = subject.split('.').collect();
     match parts.as_slice() {
-        ["gbe", "events", "lifecycle", component, ..] => (*component).to_string(),
+        ["lifecycle", component, ..] => (*component).to_string(),
         ["gbe", "events", "system", ..] => "system".to_string(),
         ["gbe", "events", "sentinel", host, ..] => format!("sentinel/{host}"),
         ["gbe", "jobs", job_type, ..] => format!("job:{job_type}"),
@@ -259,7 +259,7 @@ async fn subscribe_all(
     // Lifecycle events for each known component
     for comp in COMPONENTS {
         for evt in LIFECYCLE_EVENTS {
-            subjects.push(format!("gbe.events.lifecycle.{comp}.{evt}"));
+            subjects.push(format!("lifecycle.{comp}.{evt}"));
         }
     }
 
@@ -483,26 +483,22 @@ fn draw(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App) ->
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     let demo = args.iter().any(|a| a == "--demo");
-    let redis_url = args
-        .iter()
-        .position(|a| a == "--redis-url")
-        .and_then(|i| args.get(i + 1))
-        .cloned();
 
-    let is_redis = redis_url.is_some();
-    let (transport, label): (Arc<dyn Transport>, String) = if let Some(url) = redis_url {
-        let config = gbe_nexus_redis::RedisTransportConfig {
-            url: url.clone(),
-            ..Default::default()
-        };
-        let t = gbe_nexus_redis::RedisTransport::connect(config).await?;
-        (Arc::new(t), format!("redis: {url}"))
-    } else {
+    let (transport, label): (Arc<dyn Transport>, String) = if demo {
         let t = gbe_nexus_memory::MemoryTransport::new(
             gbe_nexus_memory::MemoryTransportConfig::default(),
         );
         (Arc::new(t), "memory (demo)".to_string())
+    } else {
+        let shared = frame::config::load_shared().unwrap_or_default();
+        let config = gbe_nexus_redis::RedisTransportConfig {
+            url: shared.redis_url.clone(),
+            max_payload_size: shared.max_payload_size,
+        };
+        let t = gbe_nexus_redis::RedisTransport::connect(config).await?;
+        (Arc::new(t), format!("redis: {}", shared.redis_url))
     };
+    let is_redis = !demo;
 
     let (tx, mut rx) = mpsc::unbounded_channel::<DisplayEvent>();
 

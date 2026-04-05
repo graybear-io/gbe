@@ -1,11 +1,11 @@
 // -- Lifecycle payloads --
-// Published to gbe.events.lifecycle.{component}.* subjects.
+// Published to lifecycle.{component}.* subjects.
 // Wrap in DomainPayload<T> from gbe-nexus before publishing.
 
 use frame::NodeIdentity;
 
 /// Component has connected to transport and is ready.
-/// Subject: `gbe.events.lifecycle.{component}.started`
+/// Subject: `lifecycle.{component}.started`
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ComponentStarted {
     pub node: NodeIdentity,
@@ -14,7 +14,7 @@ pub struct ComponentStarted {
 }
 
 /// Component is shutting down gracefully.
-/// Subject: `gbe.events.lifecycle.{component}.stopped`
+/// Subject: `lifecycle.{component}.stopped`
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ComponentStopped {
     pub node: NodeIdentity,
@@ -23,7 +23,7 @@ pub struct ComponentStopped {
 }
 
 /// Periodic liveness signal.
-/// Subject: `gbe.events.lifecycle.{component}.heartbeat`
+/// Subject: `lifecycle.{component}.heartbeat`
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Heartbeat {
     pub node: NodeIdentity,
@@ -32,7 +32,7 @@ pub struct Heartbeat {
 }
 
 /// Component is alive but unhealthy.
-/// Subject: `gbe.events.lifecycle.{component}.degraded`
+/// Subject: `lifecycle.{component}.degraded`
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ComponentDegraded {
     pub node: NodeIdentity,

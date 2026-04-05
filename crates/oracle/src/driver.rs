@@ -453,8 +453,8 @@ mod tests {
         emit_started(&emitter).await;
 
         let subjects = transport.subjects();
-        assert_eq!(subjects[0], "gbe.events.lifecycle.oracle.started");
-        assert_eq!(subjects[1], "gbe.events.lifecycle.oracle.capabilities");
+        assert_eq!(subjects[0], "lifecycle.oracle.started");
+        assert_eq!(subjects[1], "lifecycle.oracle.capabilities");
 
         let payload: DomainPayload<ComponentStarted> = transport.payload_at(0);
         assert_eq!(payload.data.node.name, "oracle");

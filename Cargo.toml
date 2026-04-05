@@ -19,17 +19,10 @@ members = [
     "crates/sentinel",
     "crates/watcher",
     "crates/watcher-tui",
+    "crates/tap",
 
-    # Envoy (tool composition)
-    "crates/protocol",
-    "crates/router",
-    "crates/adapter",
-    "crates/buffer",
-    "crates/client",
-    "crates/proxy",
-
-    # Display
-    "crates/cryptum",
+    # Simulation
+    "crates/geas-sim",
 
     # Testing
     "crates/test-harness",
@@ -45,6 +38,7 @@ repository = "https://github.com/graybear-io/gbe"
 [workspace.dependencies]
 # Shared ecosystem
 frame = { path = "../frame" }
+primer = { path = "../primer" }
 
 # Internal crates
 gbe-architect = { path = "crates/architect" }
@@ -59,8 +53,8 @@ gbe-oracle = { path = "crates/oracle" }
 gbe-operative = { path = "crates/operative" }
 gbe-sentinel = { path = "crates/sentinel" }
 gbe-watcher = { path = "crates/watcher" }
-gbe-protocol = { path = "crates/protocol" }
 gbe-test-harness = { path = "crates/test-harness" }
+geas-sim = { path = "crates/geas-sim" }
 
 # Async
 tokio = { version = "1", features = ["full"] }

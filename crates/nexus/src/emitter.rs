@@ -80,7 +80,7 @@ impl EventEmitter {
         &self,
         capabilities: &frame::CapabilitySet,
     ) -> Result<String, TransportError> {
-        let subject = format!("gbe.events.lifecycle.{}.capabilities", self.identity.name);
+        let subject = format!("lifecycle.{}.capabilities", self.identity.name);
         let dedup = dedup_id(self.component(), self.instance_id(), "capabilities");
         self.emit(&subject, 1, dedup, capabilities).await
     }
@@ -191,7 +191,7 @@ mod tests {
 
         let result = emitter
             .emit(
-                "gbe.events.lifecycle.operative.started",
+                "lifecycle.operative.started",
                 1,
                 "start-op-123",
                 TestEvent {
@@ -206,7 +206,7 @@ mod tests {
         assert_eq!(published.len(), 1);
         assert_eq!(
             published[0].subject,
-            "gbe.events.lifecycle.operative.started"
+            "lifecycle.operative.started"
         );
 
         let decoded: DomainPayload<TestEvent> =

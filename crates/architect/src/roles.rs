@@ -1,21 +1,52 @@
-//! Standing geas for each GBE role.
+//! Standing geas for ecosystem roles.
 //!
 //! Each function returns a Geas that defines the role — its steps are
 //! the standing behaviors, its params are the configuration the node
 //! needs at instantiation.
+//!
+//! The architect is the ecosystem-wide role registry, organized by domain.
+//! A role's geas defines what it does; a node becomes that role when the
+//! geas is imprinted on it. For v0, imprinting is implicit (the binary
+//! registers itself). Future: the architect confers identity by imprinting
+//! a geas onto a node that satisfies the interface requirements.
 
 use frame::{
     AuthorityLevel, Capability, CapabilityParam, Geas, GeasLifecycle, GeasParam, GeasStep,
     ParamKind,
 };
 
-/// All known role names in the constellation.
+/// All known role names across the ecosystem.
 ///
-/// Overseer uses this to derive concrete subjects for lifecycle and writ
+/// Used to derive concrete subjects for lifecycle, capability, and writ
 /// subscriptions. This is the Architect's view of what roles exist —
 /// the source of truth for the subject namespace.
 pub fn role_names() -> &'static [&'static str] {
-    &["oracle", "sentinel", "watcher", "overseer"]
+    &[
+        // GBE — machine orchestration
+        "oracle",
+        "sentinel",
+        "watcher",
+        // allthing — human communication
+        "overseer",
+        "herald",
+        // akasha — knowledge pipeline
+        "thalamus",
+    ]
+}
+
+/// GBE domain roles only.
+pub fn gbe_roles() -> &'static [&'static str] {
+    &["oracle", "sentinel", "watcher"]
+}
+
+/// Allthing domain roles only.
+pub fn allthing_roles() -> &'static [&'static str] {
+    &["overseer", "herald"]
+}
+
+/// Akasha domain roles only.
+pub fn akasha_roles() -> &'static [&'static str] {
+    &["thalamus"]
 }
 
 /// Standing geas for the Oracle role.
@@ -190,6 +221,70 @@ pub fn overseer() -> Geas {
     }
 }
 
+/// Standing geas for the Discord barrier role.
+///
+/// Discord barrier translates between Discord and the ecosystem's packet model.
+/// It is both a barrier (external surface) and a writ-addressable node (internal
+/// actors can command it to post messages, manage channels, etc.).
+pub fn herald() -> Geas {
+    Geas {
+        name: "herald".to_string(),
+        description: "Discord barrier node. Translates Discord ↔ ecosystem packets.".to_string(),
+        version: 1,
+        lifecycle: GeasLifecycle::Standing,
+        authority_required: AuthorityLevel::Pilgrim,
+        params: vec![],
+        steps: vec![
+            GeasStep {
+                name: "relay-outbound".to_string(),
+                role: "herald".to_string(),
+                capability: "post-message".to_string(),
+                input: vec![],
+                depends_on: vec![],
+            },
+        ],
+    }
+}
+
+/// Standing geas for the Thalamus role.
+///
+/// Thalamus is the knowledge gateway — HTTP barrier for the web surface,
+/// and a writ-addressable node for internal collect/gather operations.
+/// Oracle can dispatch gather jobs to thalamus via writs.
+pub fn thalamus() -> Geas {
+    Geas {
+        name: "thalamus".to_string(),
+        description: "Knowledge gateway. HTTP barrier + bus-addressable collect/gather.".to_string(),
+        version: 1,
+        lifecycle: GeasLifecycle::Standing,
+        authority_required: AuthorityLevel::Pilgrim,
+        params: vec![],
+        steps: vec![
+            GeasStep {
+                name: "collect".to_string(),
+                role: "thalamus".to_string(),
+                capability: "collect".to_string(),
+                input: vec![],
+                depends_on: vec![],
+            },
+            GeasStep {
+                name: "gather".to_string(),
+                role: "thalamus".to_string(),
+                capability: "gather".to_string(),
+                input: vec![],
+                depends_on: vec![],
+            },
+            GeasStep {
+                name: "status".to_string(),
+                role: "thalamus".to_string(),
+                capability: "resource-status".to_string(),
+                input: vec![],
+                depends_on: vec![],
+            },
+        ],
+    }
+}
+
 /// Derive the capabilities a role offers from its standing geas.
 ///
 /// This extracts the capability names referenced in the geas steps
@@ -222,6 +317,8 @@ pub fn rich_capabilities_for(geas: &Geas, identity: frame::NodeIdentity) -> fram
         "sentinel" => sentinel_capabilities(),
         "watcher" => watcher_capabilities(),
         "overseer" => overseer_capabilities(),
+        "herald" => herald_capabilities(),
+        "thalamus" => thalamus_capabilities(),
         _ => capabilities_for(geas),
     };
 
@@ -363,6 +460,74 @@ fn overseer_capabilities() -> Vec<Capability> {
                     description: "JSON-encoded parameters for the geas".to_string(),
                 },
             ],
+            authority_required: AuthorityLevel::Pilgrim,
+        },
+    ]
+}
+
+fn herald_capabilities() -> Vec<Capability> {
+    vec![Capability {
+        name: "post-message".to_string(),
+        description: "Post a message to a mapped Discord channel".to_string(),
+        params: vec![
+            CapabilityParam {
+                name: "channel".to_string(),
+                kind: ParamKind::String,
+                required: true,
+                description: "Channel name or ID".to_string(),
+            },
+            CapabilityParam {
+                name: "message".to_string(),
+                kind: ParamKind::String,
+                required: true,
+                description: "Message text".to_string(),
+            },
+        ],
+        authority_required: AuthorityLevel::Pilgrim,
+    }]
+}
+
+fn thalamus_capabilities() -> Vec<Capability> {
+    vec![
+        Capability {
+            name: "collect".to_string(),
+            description: "Ingest a URL into the knowledge pipeline".to_string(),
+            params: vec![
+                CapabilityParam {
+                    name: "url".to_string(),
+                    kind: ParamKind::String,
+                    required: true,
+                    description: "URL to collect".to_string(),
+                },
+                CapabilityParam {
+                    name: "tags".to_string(),
+                    kind: ParamKind::String,
+                    required: false,
+                    description: "Comma-separated tags".to_string(),
+                },
+            ],
+            authority_required: AuthorityLevel::Pilgrim,
+        },
+        Capability {
+            name: "gather".to_string(),
+            description: "Collect and enrich a URL (full gather pipeline)".to_string(),
+            params: vec![CapabilityParam {
+                name: "url".to_string(),
+                kind: ParamKind::String,
+                required: true,
+                description: "URL to gather".to_string(),
+            }],
+            authority_required: AuthorityLevel::Pilgrim,
+        },
+        Capability {
+            name: "resource-status".to_string(),
+            description: "Query the status of a collected resource by key".to_string(),
+            params: vec![CapabilityParam {
+                name: "key".to_string(),
+                kind: ParamKind::Reference,
+                required: true,
+                description: "Engram key of the resource".to_string(),
+            }],
             authority_required: AuthorityLevel::Pilgrim,
         },
     ]

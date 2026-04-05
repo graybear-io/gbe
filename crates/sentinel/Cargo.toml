@@ -1,6 +1,9 @@
 [package]
 name = "gbe-sentinel"
-description = "Per-host VM lifecycle manager for GBE task execution"
+description = "Machine-line barrier node — mesh manifests to ecumene imprints, mandate receipt, payload delivery"
+# STATUS: REWRITE — current impl is VM-lifecycle-focused (slots, profiles, VmState).
+# Needs redesign around mesh-barrier model: read mesh manifests, create imprints,
+# receive mandates, provision payloads. See ecosystem/gbe-bootstrap-problem.md.
 version.workspace = true
 edition.workspace = true
 license.workspace = true

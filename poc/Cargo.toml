@@ -1,3 +1,0 @@
-[workspace]
-members = ["sentinel", "operative"]
-resolver = "3"

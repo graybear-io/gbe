@@ -1,7 +1,8 @@
 /// Subject builders for the jobs domain.
 ///
-/// Job lifecycle subjects are new (`gbe.jobs.*`).
+/// Job lifecycle subjects are domain-scoped (`gbe.jobs.*`).
 /// Task subjects reuse the existing hierarchy (`gbe.tasks.*`).
+/// Writs and lifecycle are ecosystem infrastructure (no domain prefix).
 pub mod jobs {
     #[must_use]
     pub fn created(job_type: &str) -> String {
@@ -51,52 +52,52 @@ pub mod writs {
     /// Writ subject for a role. Overseer publishes writs here.
     #[must_use]
     pub fn role(role_name: &str) -> String {
-        format!("gbe.writs.{role_name}")
+        format!("writs.{role_name}")
     }
 
     /// Single response stream. All roles publish WritResponses here.
     /// Mirrors `gbe_nexus::writ::RESPONSE_SUBJECT`.
-    pub const RESPONSES: &str = "gbe.writs.responses";
+    pub const RESPONSES: &str = "writs.responses";
 }
 
 pub mod lifecycle {
     #[must_use]
     pub fn started(component: &str) -> String {
-        format!("gbe.events.lifecycle.{component}.started")
+        format!("lifecycle.{component}.started")
     }
 
     #[must_use]
     pub fn stopped(component: &str) -> String {
-        format!("gbe.events.lifecycle.{component}.stopped")
+        format!("lifecycle.{component}.stopped")
     }
 
     #[must_use]
     pub fn heartbeat(component: &str) -> String {
-        format!("gbe.events.lifecycle.{component}.heartbeat")
+        format!("lifecycle.{component}.heartbeat")
     }
 
     #[must_use]
     pub fn degraded(component: &str) -> String {
-        format!("gbe.events.lifecycle.{component}.degraded")
+        format!("lifecycle.{component}.degraded")
     }
 
     /// Wildcard for all lifecycle events of a component (NATS-compatible).
     #[must_use]
     pub fn all(component: &str) -> String {
-        format!("gbe.events.lifecycle.{component}.*")
+        format!("lifecycle.{component}.*")
     }
 
     /// Wildcard for all lifecycle events across all components.
     #[must_use]
     pub fn all_components() -> String {
-        "gbe.events.lifecycle.*.*".to_string()
+        "lifecycle.*.*".to_string()
     }
 
     /// Capability announcement for a component.
     /// Published alongside ComponentStarted and on heartbeat.
     #[must_use]
     pub fn capabilities(component: &str) -> String {
-        format!("gbe.events.lifecycle.{component}.capabilities")
+        format!("lifecycle.{component}.capabilities")
     }
 }
 
@@ -106,57 +107,33 @@ mod tests {
 
     #[test]
     fn job_subjects() {
-        assert_eq!(
-            jobs::created("daily-report"),
-            "gbe.jobs.daily-report.created"
-        );
-        assert_eq!(
-            jobs::completed("daily-report"),
-            "gbe.jobs.daily-report.completed"
-        );
+        assert_eq!(jobs::created("daily-report"), "gbe.jobs.daily-report.created");
+        assert_eq!(jobs::completed("daily-report"), "gbe.jobs.daily-report.completed");
         assert_eq!(jobs::failed("daily-report"), "gbe.jobs.daily-report.failed");
-        assert_eq!(
-            jobs::cancelled("daily-report"),
-            "gbe.jobs.daily-report.cancelled"
-        );
+        assert_eq!(jobs::cancelled("daily-report"), "gbe.jobs.daily-report.cancelled");
         assert_eq!(jobs::all("daily-report"), "gbe.jobs.daily-report.*");
     }
 
     #[test]
     fn task_subjects() {
         assert_eq!(tasks::queue("email-send"), "gbe.tasks.email-send.queue");
-        assert_eq!(
-            tasks::progress("email-send"),
-            "gbe.tasks.email-send.progress"
-        );
-        assert_eq!(
-            tasks::terminal("email-send"),
-            "gbe.tasks.email-send.terminal"
-        );
+        assert_eq!(tasks::progress("email-send"), "gbe.tasks.email-send.progress");
+        assert_eq!(tasks::terminal("email-send"), "gbe.tasks.email-send.terminal");
+    }
+
+    #[test]
+    fn writ_subjects() {
+        assert_eq!(writs::role("sentinel"), "writs.sentinel");
+        assert_eq!(writs::RESPONSES, "writs.responses");
     }
 
     #[test]
     fn lifecycle_subjects() {
-        assert_eq!(
-            lifecycle::started("operative"),
-            "gbe.events.lifecycle.operative.started"
-        );
-        assert_eq!(
-            lifecycle::stopped("oracle"),
-            "gbe.events.lifecycle.oracle.stopped"
-        );
-        assert_eq!(
-            lifecycle::heartbeat("sentinel"),
-            "gbe.events.lifecycle.sentinel.heartbeat"
-        );
-        assert_eq!(
-            lifecycle::degraded("watcher"),
-            "gbe.events.lifecycle.watcher.degraded"
-        );
-        assert_eq!(
-            lifecycle::all("operative"),
-            "gbe.events.lifecycle.operative.*"
-        );
-        assert_eq!(lifecycle::all_components(), "gbe.events.lifecycle.*.*");
+        assert_eq!(lifecycle::started("operative"), "lifecycle.operative.started");
+        assert_eq!(lifecycle::stopped("oracle"), "lifecycle.oracle.stopped");
+        assert_eq!(lifecycle::heartbeat("sentinel"), "lifecycle.sentinel.heartbeat");
+        assert_eq!(lifecycle::degraded("watcher"), "lifecycle.watcher.degraded");
+        assert_eq!(lifecycle::all("operative"), "lifecycle.operative.*");
+        assert_eq!(lifecycle::all_components(), "lifecycle.*.*");
     }
 }
