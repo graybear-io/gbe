@@ -9,11 +9,6 @@ From Greek *oikoumene* — the whole inhabited world.
 See [ecosystem/crate-map.md](../ecosystem/crate-map.md) for the full
 crate inventory, dependency graph, and "I need to..." lookup table.
 
-## Foundation Dependencies
-
-- **[frame](../frame/)** — the substrate
-- **[primer](../primer/)** — the display contract
-
 ## License
 
 MIT

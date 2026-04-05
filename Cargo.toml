@@ -1,6 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
+    # Foundation
+    "crates/frame",
+    "crates/primer",
+
     # Transport + state
     "crates/nexus",
     "crates/nexus-memory",
@@ -36,9 +40,9 @@ license = "MIT"
 repository = "https://github.com/graybear-io/gbe"
 
 [workspace.dependencies]
-# Shared ecosystem
-frame = { path = "../frame" }
-primer = { path = "../primer" }
+# Foundation
+frame = { path = "crates/frame" }
+primer = { path = "crates/primer" }
 
 # Internal crates
 gbe-architect = { path = "crates/architect" }
@@ -80,6 +84,9 @@ ulid = "1"
 
 # Encoding
 base64 = "0.22"
+
+# Filesystem
+dirs = "6"
 
 # CLI
 clap = { version = "4", features = ["derive"] }
